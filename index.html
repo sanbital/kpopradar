@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K-POP 유튜브 트렌드 레이더</title>
+<style>
+:root{
+  --paper:#F7F6F2; --ink:#16181C; --sub:#5C6370; --line:#DDDAD2;
+  --card:#FFFFFF; --accent:#C9184A; --accent-soft:#FDE8EF;
+  --bar:#2F4D8A; --bar-soft:#E3E9F5; --ok:#1B7A43;
+  --mono:'Consolas','SF Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{font-family:'Pretendard','Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var(--paper);color:var(--ink);margin:0;font-size:15px;line-height:1.55}
+.wrap{max-width:1000px;margin:0 auto;padding:26px 20px 80px}
+header h1{font-size:25px;margin:0;letter-spacing:-0.5px}
+header .tag{display:inline-block;background:var(--accent);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:3px;vertical-align:middle;margin-left:8px;letter-spacing:1px}
+header p{color:var(--sub);font-size:13px;margin:6px 0 0}
+
+.tabs{display:flex;gap:0;margin-top:22px;border-bottom:2px solid var(--ink)}
+.tab{padding:12px 22px;font-size:15px;font-weight:700;cursor:pointer;background:none;border:none;color:var(--sub);border-radius:8px 8px 0 0;margin:0}
+.tab.on{background:var(--ink);color:#fff}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:22px;margin-top:18px}
+.card h2{font-size:16px;margin:0 0 12px}
+label{display:block;font-size:13px;font-weight:600;margin-top:14px}
+input,select{width:100%;padding:9px 11px;margin-top:5px;border:1px solid var(--line);border-radius:6px;font-size:14px;background:#fff}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row>div{flex:1;min-width:150px}
+.note{font-size:12px;color:var(--sub);margin-top:4px}
+button{padding:11px 18px;font-size:14px;font-weight:700;border:none;border-radius:7px;cursor:pointer;background:var(--ink);color:#fff;margin-top:16px;margin-right:8px}
+button.primary{background:var(--accent)}
+button.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+button:disabled{background:#AEB2B9;cursor:not-allowed}
+.log{font-family:var(--mono);font-size:12px;background:#16181C;color:#C8E6C9;border-radius:7px;padding:12px 14px;margin-top:14px;max-height:140px;overflow-y:auto;white-space:pre-line;display:none}
+
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+th{text-align:left;font-size:11px;color:var(--sub);border-bottom:2px solid var(--ink);padding:6px 8px;white-space:nowrap}
+td{border-bottom:1px solid var(--line);padding:7px 8px;vertical-align:top}
+td.num,th.num{text-align:right;font-family:var(--mono);white-space:nowrap}
+.vtitle{max-width:330px}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;margin-left:6px;vertical-align:1px}
+.badge.hot{background:var(--accent);color:#fff}
+.badge.shorts{background:#7048E8;color:#fff}
+.hbar{height:14px;background:var(--bar-soft);border-radius:3px;overflow:hidden;margin-top:3px}
+.hbar>i{display:block;height:100%;background:var(--bar)}
+.hbar.acc>i{background:var(--accent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:720px){.grid2{grid-template-columns:1fr}}
+.kpi{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+.kpi>div{flex:1;min-width:125px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px}
+.kpi b{display:block;font-size:21px;font-family:var(--mono);letter-spacing:-1px}
+.kpi span{font-size:11px;color:var(--sub)}
+.insight{border-left:4px solid var(--accent);background:var(--accent-soft);padding:11px 15px;border-radius:0 8px 8px 0;margin-top:9px;font-size:14px}
+.qlist{font-size:13px;margin:6px 0 0;padding-left:0;list-style:none}
+.qlist li{padding:7px 0;border-bottom:1px dashed var(--line)}
+.qlist .meta{font-size:11px;color:var(--sub);font-family:var(--mono)}
+h3.sec{font-size:14px;border-bottom:2px solid var(--ink);padding-bottom:6px;margin:26px 0 10px}
+.kwline{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:5px}
+.kwline .w{width:120px;flex-shrink:0;text-align:right;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kwline .c{width:56px;flex-shrink:0;font-family:var(--mono);font-size:12px;color:var(--sub)}
+.kwline .hbar{flex:1;margin-top:0}
+.rephead{border-bottom:3px solid var(--ink);padding-bottom:12px}
+.rephead h2{font-size:21px;margin:0}
+.rephead .sub{font-size:12px;color:var(--sub);font-family:var(--mono);margin-top:4px}
+.panel{display:none}
+.panel.on{display:block}
+.trend-controls{display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:12px}
+.trend-controls .wide{grid-column:span 2}
+@media(max-width:820px){.trend-controls{grid-template-columns:1fr 1fr}.trend-controls .wide{grid-column:span 2}}
+@media(max-width:520px){.trend-controls{grid-template-columns:1fr}.trend-controls .wide{grid-column:span 1}}
+.pills{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.pill{display:inline-block;background:var(--bar-soft);color:var(--bar);font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px}
+.rankno{font-family:var(--mono);font-weight:800;font-size:14px}
+a.link{color:var(--ink);text-decoration:none;border-bottom:1px solid #AAA}
+a.link:hover{color:var(--accent);border-color:var(--accent)}
+.smalllink{font-size:11px;color:var(--sub);text-decoration:none}
+.smalllink:hover{color:var(--accent)}
+.conf{font-size:10px;color:var(--sub);white-space:nowrap}
+.warn{background:#FFF8E7;border:1px solid #E8D69A;padding:10px 12px;border-radius:7px;font-size:12px;margin-top:10px}
+textarea{width:100%;padding:9px 11px;margin-top:5px;border:1px solid var(--line);border-radius:6px;font-size:14px;background:#fff;resize:vertical;min-height:64px;font-family:inherit}
+.metric-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+.metric-tabs button{margin:0;padding:7px 11px;font-size:12px}
+.metric-tabs button.on{background:var(--accent)}
+@media print{
+  body{background:#fff;font-size:12px}
+  .card{border:none;padding:0;margin-top:12px}
+  .tabs,.noprint,.log,.inputcard{display:none!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>K-POP 유튜브 트렌드 레이더 <span class="tag">DISCOVERY</span></h1>
+  <p>최근 조회수가 높은 영상에서 뜨는 채널·아티스트 후보를 발견하고, 발견한 대상을 채널/댓글 분석으로 깊게 파고드는 PD용 도구입니다.</p>
+</header>
+
+<div class="card inputcard">
+  <div class="row">
+    <div style="flex:2">
+      <label>YouTube API 키 (공통)</label>
+      <input type="password" id="apiKey" placeholder="AIza로 시작하는 키 — 저장되지 않음">
+    </div>
+    <div style="flex:3">
+      <label>추적 키워드 (선택) — 출연자·주제어, 쉼표 구분</label>
+      <input type="text" id="trackKeywords" placeholder="예: 최립우, 장한음, 박우진, 여보세요">
+    </div>
+  </div>
+</div>
+
+<div class="tabs noprint">
+  <button class="tab on" id="tabBtn0" onclick="switchTab(0)">1 · K-POP 트렌드 탐색</button>
+  <button class="tab" id="tabBtn1" onclick="switchTab(1)">2 · 발견 채널 분석</button>
+  <button class="tab" id="tabBtn2" onclick="switchTab(2)">3 · 영상 댓글 분석</button>
+</div>
+
+<!-- ============ TAB 0 : K-POP TREND DISCOVERY ============ -->
+<div class="panel on" id="panel0">
+  <div class="card inputcard">
+    <h2>최근 K-POP 트렌드 탐색 — 채널·아티스트 발견용</h2>
+    <div class="trend-controls">
+      <div>
+        <label>최근 기간</label>
+        <select id="trDays"><option value="1">24시간</option><option value="3">3일</option><option value="7" selected>7일</option><option value="14">14일</option><option value="30">30일</option><option value="90">90일</option></select>
+      </div>
+      <div>
+        <label>시장 표본</label>
+        <select id="trRegion"><option value="KR">한국</option><option value="JP">일본</option><option value="US">미국</option><option value="SEA">동남아 3개국</option><option value="GLOBAL" selected>글로벌 4개 시장</option></select>
+      </div>
+      <div>
+        <label>탐색 범위</label>
+        <select id="trPreset"><option value="core">핵심 K-POP</option><option value="release">컴백·데뷔·MV</option><option value="performance">무대·직캠·퍼포먼스</option><option value="all" selected>전체 레이더</option></select>
+      </div>
+      <div>
+        <label>후보 수집 방식</label>
+        <select id="trMode"><option value="views">조회수 TOP 중심</option><option value="date">최신 업로드 중심</option><option value="balanced" selected>조회수+최신 균형</option></select>
+      </div>
+      <div>
+        <label>영상 형식</label>
+        <select id="trFormat"><option value="all" selected>전체</option><option value="short">4분 미만</option><option value="medium">4~20분</option><option value="long">20분 초과</option></select>
+      </div>
+      <div>
+        <label>카테고리</label>
+        <select id="trCategory"><option value="all" selected>전체 카테고리</option><option value="10">음악만</option></select>
+      </div>
+      <div class="wide">
+        <label>추가 검색어 (선택, 줄바꿈 구분)</label>
+        <textarea id="trCustom" placeholder="예: rookie idol&#10;5세대 걸그룹&#10;보이그룹 직캠"></textarea>
+      </div>
+      <div class="wide">
+        <label>제외 키워드 (선택, 쉼표 구분)</label>
+        <input id="trExclude" placeholder="예: reaction, lyrics, compilation">
+      </div>
+    </div>
+    <div class="note" id="trQuotaNote">검색 호출량 계산 중…</div>
+    <div class="warn">‘아티스트 후보’는 공식 채널명 또는 영상 제목 규칙으로 자동 추정합니다. 방송사·레이블 영상은 제목 형식에 따라 멤버명이나 프로그램명이 잡힐 수 있으므로 최종 판단 전 원본 영상을 확인하세요.</div>
+    <button class="primary" onclick="runTrend()" id="trBtn">K-POP 트렌드 탐색</button>
+    <div class="log" id="trLog"></div>
+  </div>
+  <div class="card" id="trReport" style="display:none"></div>
+  <div class="noprint" id="trExport" style="display:none">
+    <button class="ghost" onclick="trendCSV('videos')">영상 CSV</button>
+    <button class="ghost" onclick="trendCSV('channels')">채널 CSV</button>
+    <button class="ghost" onclick="trendCSV('artists')">아티스트 후보 CSV</button>
+    <button class="ghost" onclick="trendCopy()">AI 심층분석용 복사</button>
+    <span class="note" id="trCopyMsg"></span>
+  </div>
+</div>
+
+<!-- ============ TAB 1 : CHANNEL ============ -->
+<div class="panel" id="panel1">
+  <div class="card inputcard">
+    <h2>발견 채널 성과 리포트 — 편성·벤치마크용</h2>
+    <div class="row">
+      <div style="flex:3">
+        <label>채널 주소 또는 @핸들</label>
+        <input type="text" id="chInput" placeholder="https://www.youtube.com/@채널명 또는 UC로 시작하는 ID">
+      </div>
+      <div><label>기간 시작 (업로드일)</label><input type="date" id="chFrom"></div>
+      <div><label>기간 끝</label><input type="date" id="chTo"></div>
+      <div><label>최대 영상 수</label>
+        <select id="chMax"><option>50</option><option selected>100</option><option>200</option><option>400</option></select>
+      </div>
+    </div>
+    <div class="note">기간을 비우면 최신 영상부터 최대 개수만큼 수집. 이 탭은 댓글을 읽지 않아 할당량 소모가 적습니다. ‘일평균 강세’는 실시간 증가량이 아니라 업로드 후 누적 조회수 ÷ 경과일 기준입니다.</div>
+    <button class="primary" onclick="runChannel()" id="chBtn">채널 리포트 생성</button>
+    <div class="log" id="chLog"></div>
+  </div>
+  <div class="card" id="chReport" style="display:none"></div>
+  <div class="noprint" id="chExport" style="display:none">
+    <button class="ghost" onclick="window.print()">리포트 인쇄 / PDF 저장</button>
+    <button class="ghost" onclick="chCSV()">영상 데이터 CSV</button>
+    <button class="ghost" onclick="chCopy()">Claude 심층분석용 복사</button>
+    <span class="note" id="chCopyMsg"></span>
+  </div>
+</div>
+
+<!-- ============ TAB 2 : VIDEO ============ -->
+<div class="panel" id="panel2">
+  <div class="card inputcard">
+    <h2>발견 영상 심층 분석 — 댓글·팬덤 반응 해부</h2>
+    <div class="row">
+      <div style="flex:3">
+        <label>영상 주소 (URL)</label>
+        <input type="text" id="vidInput" placeholder="https://www.youtube.com/watch?v=...">
+      </div>
+      <div><label>댓글 수집 상한</label>
+        <select id="vidMax"><option>1000</option><option selected>2000</option><option>5000</option><option value="99999">전체</option></select>
+      </div>
+    </div>
+    <div class="note">댓글은 관련도순(반응 상위 우선)으로 수집합니다. 2,000개 기준 약 20유닛.</div>
+    <button class="primary" onclick="runVideo()" id="vidBtn">영상 분석 리포트 생성</button>
+    <div class="log" id="vidLog"></div>
+  </div>
+  <div class="card" id="vidReport" style="display:none"></div>
+  <div class="noprint" id="vidExport" style="display:none">
+    <button class="ghost" onclick="window.print()">리포트 인쇄 / PDF 저장</button>
+    <button class="ghost" onclick="vidCSV()">댓글 원본 CSV</button>
+    <button class="ghost" onclick="vidCopy()">Claude 심층분석용 복사</button>
+    <span class="note" id="vidCopyMsg"></span>
+  </div>
+</div>
+
+</div>
+
+<script>
+'use strict';
+const API='https://www.googleapis.com/youtube/v3/';
+const $=id=>document.getElementById(id);
+const fmt=n=>Number(n||0).toLocaleString('ko-KR');
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const DAYS=['일','월','화','수','목','금','토'];
+function log(el,m){const e=$(el);e.style.display='block';e.textContent+=m+'\n';e.scrollTop=e.scrollHeight;}
+function clearLog(el){$(el).textContent='';}
+function switchTab(n){
+  for(const i of [0,1,2]){
+    $('panel'+i).classList.toggle('on',n===i);
+    $('tabBtn'+i).classList.toggle('on',n===i);
+  }
+}
+function daysSince(iso){return Math.max(1,(Date.now()-new Date(iso).getTime())/86400000);}
+function median(a){if(!a.length)return 0;const s=[...a].sort((x,y)=>x-y);const m=Math.floor(s.length/2);return s.length%2?s[m]:(s[m-1]+s[m])/2;}
+function parseISODur(d){ // PT#H#M#S → seconds
+  const m=d?.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)||[];
+  return (+m[1]||0)*3600+(+m[2]||0)*60+(+m[3]||0);
+}
+async function yt(endpoint,params){
+  const u=new URL(API+endpoint);
+  Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
+  u.searchParams.set('key',$('apiKey').value.trim());
+  const r=await fetch(u);
+  if(!r.ok){
+    const e=await r.json().catch(()=>({}));
+    const reason=e?.error?.errors?.[0]?.reason||r.status;
+    if(['quotaExceeded','dailyLimitExceeded','rateLimitExceeded'].includes(reason))throw new Error('API 일일 할당량 또는 호출 제한을 초과했습니다.');
+    if(reason==='commentsDisabled')throw new Error('COMMENTS_DISABLED');
+    if(r.status===403)throw new Error('키 오류: YouTube Data API v3 사용 설정과 키 제한을 확인하세요.');
+    throw new Error('API 오류: '+reason);
+  }
+  return r.json();
+}
+function bar(v,max,acc){return '<div class="hbar'+(acc?' acc':'')+'"><i style="width:'+(max?Math.max(2,Math.round(v/max*100)):0)+'%"></i></div>';}
+function kwline(label,count,max,acc){return '<div class="kwline"><span class="w">'+esc(label)+'</span><span class="c">'+fmt(count)+'</span>'+bar(count,max,acc)+'</div>';}
+function getTrack(){return $('trackKeywords').value.split(',').map(s=>s.trim()).filter(Boolean);}
+
+
+/* ================================================================
+   TAB 0 — K-POP 트렌드 탐색
+================================================================ */
+const TREND_PRESETS={
+  core:[
+    'KPOP|K-POP|케이팝',
+    '아이돌|idol group|korean idol'
+  ],
+  release:[
+    'comeback|컴백|debut|데뷔|신곡',
+    'official MV|M/V|music video|뮤직비디오|album highlight'
+  ],
+  performance:[
+    'performance video|dance practice|퍼포먼스 비디오|안무영상|live clip',
+    'fancam|FanCam|직캠|입덕직캠|KPOP stage|무대'
+  ],
+  all:[
+    'KPOP|K-POP|케이팝|korean idol',
+    'comeback|컴백|debut|데뷔|신곡',
+    'official MV|M/V|music video|뮤직비디오|performance video',
+    'fancam|FanCam|직캠|입덕직캠|KPOP stage|dance practice'
+  ]
+};
+const REGION_MAP={KR:['KR'],JP:['JP'],US:['US'],SEA:['ID','TH','PH'],GLOBAL:['KR','JP','US','ID']};
+const AGG_CHANNEL_RE=/(HYBE LABELS|SMTOWN|JYP Entertainment|YG ENTERTAINMENT|BELIFT LAB|STARSHIP|CUBE ENTERTAINMENT|P NATION|RBW|FNCEnt|FNC ENTERTAINMENT|WAKEONE|KQ ENTERTAINMENT|EDAM|SOURCE MUSIC|ADOR|KOZ ENTERTAINMENT|PLEDIS|Fantagio|WM ENTERTAINMENT|DSPmedia|IST Entertainment|Woollim|High Up Entertainment|ATTRAKT|MODHAUS|S2 Entertainment|THEBLACKLABEL|Big Planet Made|BPM Entertainment|MYSTIC STORY|AOMG|H1GHR MUSIC|MORE VISION|1theK|M2|Mnet K-POP|KBS Kpop|SBSKPOP|SBS Inkigayo|MBCkpop|MBC every1|ALL THE K-POP|THE K-POP|Stone Music|dingo music|딩고 뮤직|it's Live|아리랑|ARIRANG|GENIE MUSIC|지니뮤직|Melon|뮤직뱅크|쇼! 음악중심|인기가요|엠카운트다운)/i;
+const GENERIC_ARTIST_RE=/^(official|music|kpop|k-pop|youtube|topic|entertainment|records?|labels?|studio|channel|tv|broadcast)$/i;
+const TREND_STOP=new Set(['official','music','video','kpop','performance','stage','fancam','dance','practice','shorts','clip','live','comeback','debut','뮤직비디오','퍼포먼스','비디오','직캠','입덕직캠','무대','안무영상','라이브','클립','컴백','데뷔','신곡']);
+let TRV=[],TRC=[],TRA=[],TRMETA=null;
+
+function trendQueries(){
+  const base=[...(TREND_PRESETS[$('trPreset').value]||TREND_PRESETS.all)];
+  const custom=$('trCustom').value.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+  return [...new Set([...base,...custom])];
+}
+function trendOrders(){
+  const m=$('trMode').value;
+  return m==='balanced'?['viewCount','date']:[m==='views'?'viewCount':'date'];
+}
+function updateTrendQuota(){
+  if(!$('trQuotaNote'))return;
+  const q=trendQueries().length,r=(REGION_MAP[$('trRegion').value]||['KR']).length,o=trendOrders().length;
+  const calls=q*r*o;
+  $('trQuotaNote').textContent=`예상 search.list 호출 ${calls}회 · 기본 일일 한도 100회. 결과 상세 조회는 별도 저비용 list 호출로 묶어서 처리합니다.`;
+}
+['trPreset','trRegion','trMode'].forEach(id=>document.addEventListener('change',e=>{if(e.target?.id===id)updateTrendQuota();}));
+document.addEventListener('input',e=>{if(e.target?.id==='trCustom')updateTrendQuota();});
+setTimeout(updateTrendQuota,0);
+
+function hoursSince(iso){return Math.max(0.25,(Date.now()-new Date(iso).getTime())/3600000);}
+function cleanArtistName(s){
+  return String(s||'')
+    .replace(/\([^)]*(official|topic)[^)]*\)/ig,'')
+    .replace(/\s*[-–—]?\s*(official|오피셜|공식|topic|entertainment|엔터테인먼트|records?|labels?|music)\s*$/i,'')
+    .replace(/^\s*[\[【].*?[\]】]\s*/,'')
+    .replace(/\s+/g,' ').trim().replace(/^[\-–—|:]+|[\-–—|:]+$/g,'').trim();
+}
+function titleArtistCandidate(title){
+  let s=String(title||'').replace(/^(?:뮤직뱅크|인기가요|쇼! 음악중심|엠카운트다운|M COUNTDOWN)\s*/i,'').replace(/^\s*(?:\[[^\]]+\]\s*)+/,'').trim();
+  const patterns=[
+    /^(.{2,35}?)\s+(?:직캠|FanCam)(?:\s|$)/i,
+    /^(?:MPD|M2|KBS|SBS|MBC)?\s*직캠\s+(.{2,28}?)(?=\s+(?:직캠|4K|FanCam|['‘“]))/i,
+    /^(.{2,38}?)\s*[-–—]\s*(?:[^-–—]{1,80})/,
+    /^(.{2,34}?)\s*[‘'“\"]\s*[^’'”\"]{1,80}[’'”\"]\s*(?:MV|M\/V|Official|Performance|Dance|직캠|FanCam)?/i,
+    /^([A-Z0-9][A-Z0-9 &+.'-]{1,30})(?=\s+(?:['‘“]|MV|M\/V|Official|Performance|Dance|직캠|FanCam|4K))/,
+    /^([가-힣A-Za-z0-9][가-힣A-Za-z0-9 &+.'-]{1,28}?)(?=\s+(?:컴백|데뷔|신곡|직캠|무대|라이브|MV|M\/V))/i
+  ];
+  for(const re of patterns){
+    const m=s.match(re);if(m){
+      const c=cleanArtistName(m[1]);
+      if(c.length>=2&&!GENERIC_ARTIST_RE.test(c))return c;
+    }
+  }
+  return '';
+}
+function deriveArtist(v){
+  const ch=cleanArtistName(v.channelTitle);
+  if(ch&&!AGG_CHANNEL_RE.test(v.channelTitle)&&!GENERIC_ARTIST_RE.test(ch))return{name:ch,confidence:'채널명'};
+  const t=titleArtistCandidate(v.title);
+  if(t)return{name:t,confidence:'제목 추정'};
+  return{name:ch||v.channelTitle,confidence:'채널 대체'};
+}
+function classifyChannel(title){
+  if(AGG_CHANNEL_RE.test(title))return '레이블/방송/플랫폼';
+  if(/reaction|리액션|review|리뷰|cover|커버|dance crew|댄스팀/i.test(title))return '크리에이터/커버';
+  return '아티스트/기타';
+}
+function formatDuration(sec){
+  if(sec<60)return sec+'초';
+  const m=Math.floor(sec/60),s=sec%60;
+  return m+'분'+(s?' '+s+'초':'');
+}
+function formatShort(v){return v.dur>0&&v.dur<240;}
+function trendPassExclude(v,ex){
+  const t=(v.title+' '+v.channelTitle).toLowerCase();
+  return !ex.some(k=>k&&t.includes(k));
+}
+function loadTrendSnapshots(){
+  try{return JSON.parse(localStorage.getItem('kpopTrendSnapshotsV1')||'{}');}catch{return {};}
+}
+function applyAndSaveTrendSnapshots(videos){
+  const prev=loadTrendSnapshots(),now=Date.now(),next={};
+  for(const v of videos){
+    const p=prev[v.id];
+    if(p&&p.ts&&Number.isFinite(+p.views)&&v.views>=+p.views){
+      const dh=Math.max(1/60,(now-p.ts)/3600000);
+      v.deltaViews=v.views-(+p.views);v.deltaHours=dh;v.measuredVph=v.deltaViews/dh;
+    }else{v.deltaViews=null;v.deltaHours=null;v.measuredVph=null;}
+    next[v.id]={views:v.views,ts:now,title:v.title,channelTitle:v.channelTitle};
+  }
+  // 최근 결과와 기존 30일 이내 결과를 합쳐 최대 1500개만 브라우저에 보관
+  const cutoff=now-30*86400000;
+  for(const[id,p]of Object.entries(prev))if(!next[id]&&p.ts>=cutoff)next[id]=p;
+  const trimmed=Object.fromEntries(Object.entries(next).sort((a,b)=>b[1].ts-a[1].ts).slice(0,1500));
+  try{localStorage.setItem('kpopTrendSnapshotsV1',JSON.stringify(trimmed));}catch{}
+}
+
+async function runTrend(){
+  const btn=$('trBtn');btn.disabled=true;clearLog('trLog');
+  try{
+    if(!$('apiKey').value.trim())throw new Error('YouTube API 키를 입력하세요.');
+    const queries=trendQueries(),regions=REGION_MAP[$('trRegion').value]||['KR'],orders=trendOrders();
+    const days=+$('trDays').value,after=new Date(Date.now()-days*86400000).toISOString();
+    const format=$('trFormat').value,category=$('trCategory').value;
+    const ids=new Set(),sources=new Map();let searchCalls=0;
+    log('trLog',`최근 ${days}일 · 검색어 ${queries.length}개 · 시장 ${regions.length}개 · 정렬 ${orders.length}종`);
+    for(const region of regions){
+      for(const q of queries){
+        for(const order of orders){
+          const p={part:'snippet',type:'video',q,order,maxResults:50,publishedAfter:after,regionCode:region,safeSearch:'moderate'};
+          if(format!=='all')p.videoDuration=format;
+          if(category!=='all')p.videoCategoryId=category;
+          const d=await yt('search',p);searchCalls++;
+          for(const it of(d.items||[])){
+            const id=it.id?.videoId;if(!id)continue;
+            ids.add(id);
+            if(!sources.has(id))sources.set(id,new Set());
+            sources.get(id).add(`${region}/${q}/${order}`);
+          }
+          log('trLog',`검색 ${searchCalls}/${queries.length*regions.length*orders.length} · 후보 ${ids.size}개`);
+        }
+      }
+    }
+    if(!ids.size)throw new Error('검색 결과가 없습니다. 기간이나 검색어 범위를 넓혀보세요.');
+    const idArr=[...ids],videos=[];
+    log('trLog','영상 통계 조회 중...');
+    for(let i=0;i<idArr.length;i+=50){
+      const d=await yt('videos',{part:'snippet,statistics,contentDetails',id:idArr.slice(i,i+50).join(',')});
+      for(const it of(d.items||[])){
+        const st=it.statistics||{},dur=parseISODur(it.contentDetails?.duration),hours=hoursSince(it.snippet.publishedAt);
+        const views=+st.viewCount||0,likes=+st.likeCount||0,comments=+st.commentCount||0;
+        videos.push({id:it.id,title:it.snippet.title,channelId:it.snippet.channelId,channelTitle:it.snippet.channelTitle,
+          published:it.snippet.publishedAt,description:it.snippet.description||'',dur,views,likes,comments,hours,
+          vph:views/hours,vpd:views/(hours/24),engage:views?(likes+comments)/views*100:0,
+          sourceCount:sources.get(it.id)?.size||1});
+      }
+    }
+    const chIds=[...new Set(videos.map(v=>v.channelId))],chMap=new Map();
+    log('trLog',`채널 ${chIds.length}개 체급 조회 중...`);
+    for(let i=0;i<chIds.length;i+=50){
+      const d=await yt('channels',{part:'snippet,statistics',id:chIds.slice(i,i+50).join(',')});
+      for(const it of(d.items||[]))chMap.set(it.id,{title:it.snippet.title,subs:+it.statistics.subscriberCount||0,totalViews:+it.statistics.viewCount||0,hidden:!!it.statistics.hiddenSubscriberCount});
+    }
+    const ex=$('trExclude').value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+    TRV=videos.filter(v=>trendPassExclude(v,ex)).map(v=>{
+      const c=chMap.get(v.channelId)||{title:v.channelTitle,subs:0,totalViews:0,hidden:true};
+      const a=deriveArtist(v),subBreak=c.subs?v.views/c.subs*100:0;
+      return{...v,subs:c.subs,hiddenSubs:c.hidden,subBreak,artist:a.name,artistConfidence:a.confidence,channelType:classifyChannel(v.channelTitle)};
+    });
+    if(!TRV.length)throw new Error('제외 키워드 적용 후 남은 영상이 없습니다.');
+    applyAndSaveTrendSnapshots(TRV);
+    buildTrendAggregates();
+    TRMETA={days,regions,queries,orders,searchCalls,after,format,category,generated:new Date().toISOString()};
+    renderTrendReport('speed');
+    $('trReport').style.display='block';$('trExport').style.display='block';
+    $('trReport').scrollIntoView({behavior:'smooth'});
+    log('trLog',`완료 · 영상 ${TRV.length}개 / 채널 ${TRC.length}개 / 아티스트 후보 ${TRA.length}개`);
+  }catch(e){log('trLog','오류: '+e.message);}
+  btn.disabled=false;
+}
+function buildTrendAggregates(){
+  const cm=new Map(),am=new Map();
+  for(const v of TRV){
+    if(!cm.has(v.channelId))cm.set(v.channelId,{id:v.channelId,name:v.channelTitle,type:v.channelType,subs:v.subs,videos:[],views:0});
+    const c=cm.get(v.channelId);c.videos.push(v);c.views+=v.views;
+    const ak=v.artist.toLowerCase();
+    if(!am.has(ak))am.set(ak,{name:v.artist,confidence:new Set(),videos:[],views:0,channels:new Set()});
+    const a=am.get(ak);a.confidence.add(v.artistConfidence);a.videos.push(v);a.views+=v.views;a.channels.add(v.channelTitle);
+  }
+  TRC=[...cm.values()].map(c=>{
+    const speeds=c.videos.map(v=>v.vph),breaks=c.videos.map(v=>v.subBreak).filter(Boolean);
+    return{...c,count:c.videos.length,medianVph:median(speeds),maxVph:Math.max(...speeds),medianBreak:median(breaks),best:[...c.videos].sort((a,b)=>b.vph-a.vph)[0]};
+  }).sort((a,b)=>b.views-a.views);
+  TRA=[...am.values()].map(a=>{
+    const speeds=a.videos.map(v=>v.vph),breaks=a.videos.map(v=>v.subBreak).filter(Boolean);
+    return{...a,count:a.videos.length,channelCount:a.channels.size,medianVph:median(speeds),maxVph:Math.max(...speeds),medianBreak:median(breaks),confidence:[...a.confidence].join('/'),best:[...a.videos].sort((x,y)=>y.vph-x.vph)[0]};
+  }).filter(a=>a.name&&a.name.length>=2).sort((a,b)=>b.views-a.views);
+}
+function renderTrendReport(metric='speed'){
+  const sorted=metric==='views'?[...TRV].sort((a,b)=>b.views-a.views):metric==='break'?[...TRV].sort((a,b)=>b.subBreak-a.subBreak):metric==='delta'?[...TRV].sort((a,b)=>(b.measuredVph??-1)-(a.measuredVph??-1)):[...TRV].sort((a,b)=>b.vph-a.vph);
+  const medVph=median(TRV.map(v=>v.vph)),total=TRV.reduce((s,v)=>s+v.views,0),fresh=TRV.filter(v=>v.hours<=24).length,snapN=TRV.filter(v=>v.measuredVph!=null).length;
+  const titleKw={};for(const v of TRV){for(const w of new Set(tokenize(v.title).filter(x=>!TREND_STOP.has(x))))titleKw[w]=(titleKw[w]||{n:0,views:0}),titleKw[w].n++,titleKw[w].views+=v.views;}
+  const kws=Object.entries(titleKw).filter(([,o])=>o.n>=2).sort((a,b)=>b[1].views-a[1].views).slice(0,15);
+  const topArtist=[...TRA].sort((a,b)=>b.views-a.views).slice(0,15),topChannel=[...TRC].sort((a,b)=>b.views-a.views).slice(0,15);
+  let h='<div class="rephead"><h2>K-POP 트렌드 레이더</h2><div class="sub">최근 '+TRMETA.days+'일 · 시장 '+TRMETA.regions.join('/')+' · 검색 호출 '+TRMETA.searchCalls+'회 · 후보 영상 '+TRV.length+'개 · 생성 '+new Date(TRMETA.generated).toLocaleString('ko-KR')+'</div></div>';
+  h+='<div class="kpi"><div><b>'+fmt(TRV.length)+'</b><span>분석 영상</span></div><div><b>'+fmt(total)+'</b><span>후보 합산 조회수</span></div><div><b>'+fmt(Math.round(medVph))+'</b><span>시간당 조회수 중앙값</span></div><div><b>'+fmt(fresh)+'</b><span>24시간 내 업로드</span></div><div><b>'+fmt(TRC.length)+' / '+fmt(TRA.length)+'</b><span>채널 / 아티스트 후보</span></div><div><b>'+fmt(snapN)+'</b><span>직전 실행과 비교 가능</span></div></div>';
+  h+='<h3 class="sec">PD용 해석</h3>';
+  const speed1=[...TRV].sort((a,b)=>b.vph-a.vph)[0],break1=[...TRV].filter(v=>v.subs>0).sort((a,b)=>b.subBreak-a.subBreak)[0];
+  if(speed1)h+='<div class="insight">지금 가장 빠른 영상은 <b>「'+esc(speed1.title.slice(0,70))+'」</b> — 시간당 약 '+fmt(Math.round(speed1.vph))+'회. 총조회수보다 현재 확산 속도를 볼 때 우선 확인할 대상입니다.</div>';
+  if(topChannel[0])h+='<div class="insight">최근 후보군 합산 조회수 1위 채널은 <b>'+esc(topChannel[0].name)+'</b> — '+topChannel[0].count+'개 영상에서 '+fmt(topChannel[0].views)+'회. 반복 노출되는 편성·포맷을 확인하세요.</div>';
+  if(topArtist[0])h+='<div class="insight">자동 추정 아티스트 후보 1위는 <b>'+esc(topArtist[0].name)+'</b> — '+topArtist[0].count+'개 영상, 합산 '+fmt(topArtist[0].views)+'회. 제목 추정값은 반드시 원본 확인이 필요합니다.</div>';
+  if(break1)h+='<div class="insight">채널 구독자 체급 대비 돌파 1위 영상은 <b>「'+esc(break1.title.slice(0,55))+'」</b> — 조회수/구독자 '+break1.subBreak.toFixed(1)+'%. 신인·중소 채널 발굴에 특히 유용한 지표입니다.</div>';
+  if(snapN){const d=[...TRV].filter(v=>v.measuredVph!=null).sort((a,b)=>b.measuredVph-a.measuredVph)[0];if(d)h+='<div class="insight">직전 실행 이후 실측 증가 1위는 <b>「'+esc(d.title.slice(0,55))+'」</b> — '+fmt(d.deltaViews)+'회 증가, 시간당 '+fmt(Math.round(d.measuredVph))+'회. 반복 조사할수록 가장 신뢰도 높은 추세 지표가 됩니다.</div>';}
+  else h+='<div class="insight">첫 실행이라 실측 증가량은 아직 없습니다. 다음 실행부터 같은 브라우저에 저장된 직전 조회수와 비교해 실제 증가 속도를 표시합니다.</div>';
+  h+='<div class="metric-tabs"><button class="'+(metric==='delta'?'on':'')+'" onclick="renderTrendReport(\'delta\')">직전 실행 대비</button><button class="'+(metric==='speed'?'on':'')+'" onclick="renderTrendReport(\'speed\')">업로드 후 속도순</button><button class="'+(metric==='views'?'on':'')+'" onclick="renderTrendReport(\'views\')">누적 조회수순</button><button class="'+(metric==='break'?'on':'')+'" onclick="renderTrendReport(\'break\')">체급 돌파순</button></div>';
+  h+='<h3 class="sec">최근 영상 TOP 30</h3>'+trendVideoTable(sorted.slice(0,30),metric);
+  h+='<div class="grid2"><div><h3 class="sec">조회수를 만든 채널 TOP 15</h3>'+trendChannelTable(topChannel)+'</div><div><h3 class="sec">아티스트 후보 TOP 15</h3>'+trendArtistTable(topArtist)+'</div></div>';
+  if(kws.length){const max=kws[0][1].views;h+='<h3 class="sec">조회수 가중 제목 키워드</h3>';for(const[w,o]of kws)h+=kwline(w+' ('+o.n+'편)',o.views,max,true);}
+  h+='<div class="warn">이 결과는 YouTube 검색 후보군의 상대 비교이며 YouTube 전체 K-POP 영상의 완전한 전수 집계가 아닙니다. 직전 실행 비교 기록은 현재 브라우저에만 저장되며 브라우저 데이터 삭제 시 사라집니다. 시장 선택은 해당 국가에서 시청 가능한 검색 결과 표본을 뜻하며 채널 국적을 의미하지 않습니다.</div>';
+  $('trReport').innerHTML=h;
+}
+function analyzeDiscoveredVideo(id){$('vidInput').value='https://www.youtube.com/watch?v='+id;switchTab(2);$('vidInput').focus();}
+function trendVideoTable(rows,metric){
+  let t='<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>영상 / 아티스트 후보</th><th>채널</th><th class="num">조회수</th><th class="num">업로드후/h</th><th class="num">실측증가/h</th><th class="num">체급돌파</th><th class="num">반응률</th><th>업로드</th></tr></thead><tbody>';
+  rows.forEach((v,i)=>{const main=metric==='views'?v.views:metric==='break'?v.subBreak:v.vph;t+='<tr><td class="rankno">'+(i+1)+'</td><td class="vtitle"><a class="link" target="_blank" rel="noopener" href="https://www.youtube.com/watch?v='+v.id+'">'+esc(v.title)+'</a><div class="note">'+esc(v.artist)+' <span class="conf">('+esc(v.artistConfidence)+')</span> · '+(formatShort(v)?'<span class="badge shorts">4분 미만</span>':formatDuration(v.dur))+' · 후보검색 '+v.sourceCount+'회 포착 · <a class="smalllink" href="#" onclick="analyzeDiscoveredVideo(\''+v.id+'\');return false">댓글 분석</a></div></td><td><a class="smalllink" target="_blank" rel="noopener" href="https://www.youtube.com/channel/'+v.channelId+'">'+esc(v.channelTitle)+'</a><div class="note">구독 '+(v.hiddenSubs?'비공개':fmt(v.subs))+'</div></td><td class="num">'+fmt(v.views)+'</td><td class="num"><b>'+fmt(Math.round(v.vph))+'</b></td><td class="num">'+(v.measuredVph==null?'-':fmt(Math.round(v.measuredVph)))+'</td><td class="num">'+(v.subs?v.subBreak.toFixed(1)+'%':'-')+'</td><td class="num">'+v.engage.toFixed(2)+'%</td><td style="font-family:var(--mono);font-size:11px">'+v.published.slice(0,10)+'<br>'+Math.round(v.hours)+'h 전</td></tr>';});
+  return t+'</tbody></table></div>';
+}
+function trendChannelTable(rows){
+  let t='<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>채널</th><th class="num">후보</th><th class="num">합산 조회</th><th class="num">중앙 속도</th></tr></thead><tbody>';
+  rows.forEach((c,i)=>t+='<tr><td class="rankno">'+(i+1)+'</td><td><a class="link" target="_blank" rel="noopener" href="https://www.youtube.com/channel/'+c.id+'">'+esc(c.name)+'</a><div class="note">'+esc(c.type)+' · 구독 '+fmt(c.subs)+' · <a class="smalllink" href="#" onclick="analyzeDiscoveredChannel(\''+c.id+'\');return false">이 도구에서 분석</a></div></td><td class="num">'+c.count+'</td><td class="num">'+fmt(c.views)+'</td><td class="num">'+fmt(Math.round(c.medianVph))+'/h</td></tr>');
+  return t+'</tbody></table></div>';
+}
+function trendArtistTable(rows){
+  let t='<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>아티스트 후보</th><th class="num">영상</th><th class="num">합산 조회</th><th class="num">중앙 속도</th></tr></thead><tbody>';
+  rows.forEach((a,i)=>t+='<tr><td class="rankno">'+(i+1)+'</td><td>'+esc(a.name)+'<div class="note">'+esc(a.confidence)+' · '+a.channelCount+'개 채널 포착</div></td><td class="num">'+a.count+'</td><td class="num">'+fmt(a.views)+'</td><td class="num">'+fmt(Math.round(a.medianVph))+'/h</td></tr>');
+  return t+'</tbody></table></div>';
+}
+function trendCSV(kind){
+  if(kind==='videos'){
+    const rows=[['영상ID','제목','아티스트후보','추정근거','채널','채널유형','업로드','길이초','조회수','업로드후시간당조회','직전실행대비증가','직전실행대비시간당조회','일평균조회','좋아요','댓글','반응률%','구독자','조회수/구독자%','검색포착수']];
+    [...TRV].sort((a,b)=>b.vph-a.vph).forEach(v=>rows.push([v.id,v.title,v.artist,v.artistConfidence,v.channelTitle,v.channelType,v.published,v.dur,v.views,Math.round(v.vph),v.deltaViews??'',v.measuredVph==null?'':Math.round(v.measuredVph),Math.round(v.vpd),v.likes,v.comments,v.engage.toFixed(2),v.subs,v.subBreak.toFixed(2),v.sourceCount]));
+    dlCSV(rows,'kpop_trend_videos_'+new Date().toISOString().slice(0,10)+'.csv');
+  }else if(kind==='channels'){
+    const rows=[['채널ID','채널','유형','구독자','후보영상수','합산조회수','시간당조회중앙값','최고시간당조회','체급돌파중앙값%','최고영상']];
+    TRC.forEach(c=>rows.push([c.id,c.name,c.type,c.subs,c.count,c.views,Math.round(c.medianVph),Math.round(c.maxVph),c.medianBreak.toFixed(2),c.best?.title||'']));
+    dlCSV(rows,'kpop_trend_channels_'+new Date().toISOString().slice(0,10)+'.csv');
+  }else{
+    const rows=[['아티스트후보','추정근거','후보영상수','포착채널수','합산조회수','시간당조회중앙값','최고시간당조회','체급돌파중앙값%','최고영상']];
+    TRA.forEach(a=>rows.push([a.name,a.confidence,a.count,a.channelCount,a.views,Math.round(a.medianVph),Math.round(a.maxVph),a.medianBreak.toFixed(2),a.best?.title||'']));
+    dlCSV(rows,'kpop_trend_artists_'+new Date().toISOString().slice(0,10)+'.csv');
+  }
+}
+function trendCopy(){
+  const pack={periodDays:TRMETA?.days,markets:TRMETA?.regions,queries:TRMETA?.queries,
+    topVideos:[...TRV].sort((a,b)=>b.vph-a.vph).slice(0,30).map(v=>({title:v.title,artistCandidate:v.artist,channel:v.channelTitle,views:v.views,viewsPerHourSinceUpload:Math.round(v.vph),measuredViewsPerHour:v.measuredVph==null?null:Math.round(v.measuredVph),measuredViewDelta:v.deltaViews,viewToSubscriberPct:+v.subBreak.toFixed(2),engagementPct:+v.engage.toFixed(2),published:v.published})),
+    topChannels:TRC.slice(0,20).map(c=>({channel:c.name,type:c.type,subscribers:c.subs,candidateVideos:c.count,totalViews:c.views,medianViewsPerHour:Math.round(c.medianVph)})),
+    topArtistCandidates:TRA.slice(0,20).map(a=>({artist:a.name,confidence:a.confidence,videos:a.count,channels:a.channelCount,totalViews:a.views,medianViewsPerHour:Math.round(a.medianVph)}))};
+  navigator.clipboard.writeText('다음 최근 K-POP 유튜브 표본을 바탕으로 뜨는 아티스트/채널/포맷을 PD 관점에서 분석해줘. 자동 추정 아티스트명은 오류 가능성을 명시하고, ①즉시 섭외 후보 ②콘텐츠 벤치마크 ③추가 조사 필요 대상을 나눠줘:\n'+JSON.stringify(pack,null,1)).then(()=>{$('trCopyMsg').textContent='복사됨';});
+}
+
+/* ---------- 공용: 언어/감성/토큰 ---------- */
+const STOP=new Set(['그리고','그런데','하지만','정말','진짜','너무','근데','저는','제가','이건','그냥','이렇게','같아요','합니다','해요','있는','있어요','없는','했어요','하는','에서','으로','부터','까지','저도','우리','오늘','영상','댓글','채널','유튜브','제발','그리구','이제','다시','계속','보고','하고','와서','근데요','the','and','for','you','are','this','that','was','with','have','has','not','but','all','can','your','its','from','they','their','will','out','when','what','who','how','why','just','like','was','were','been','him','her','his','she','get','got','one','video','youtube','comment']);
+function detectLang(s){
+  let ko=0,ja=0,zh=0,th=0,ru=0,ar=0,la=0,vi=0,id_=0;
+  const lower=s.toLowerCase();
+  for(const ch of s){const c=ch.codePointAt(0);
+    if(c>=0xAC00&&c<=0xD7A3)ko++;
+    else if(c>=0x3040&&c<=0x30FF)ja++;
+    else if(c>=0x4E00&&c<=0x9FFF)zh++;
+    else if(c>=0x0E00&&c<=0x0E7F)th++;
+    else if(c>=0x0400&&c<=0x04FF)ru++;
+    else if(c>=0x0600&&c<=0x06FF)ar++;
+    else if((c>=65&&c<=90)||(c>=97&&c<=122))la++;
+  }
+  if(la>0){ // 로마자 세부 구분(근사)
+    if(/[ăâđêôơư]|kh[oô]ng|(^|\s)(anh|em|qu[áa]|đ[ẹe]p)(\s|$)/.test(lower))vi=la;
+    else if(/(^|\s)(yang|banget|aku|keren|kalian|sangat|nya)(\s|$)/.test(lower))id_=la;
+  }
+  const arr=[['한국어',ko],['일본어',ja],['중국어',zh],['태국어',th],['러시아어',ru],['아랍어',ar],['베트남어',vi],['인니/말레이',id_],['영어/기타로마자',la-vi-id_]];
+  arr.sort((a,b)=>b[1]-a[1]);
+  return arr[0][1]<=0?'기타/이모지':arr[0][0];
+}
+const POS_KO=['좋아','좋다','좋았','최고','대박','귀엽','귀여','예쁘','이쁘','예뻐','멋있','멋져','멋지','잘생','사랑','행복','감동','힐링','재밌','재미있','웃겨','웃기','레전드','완벽','소중','고마','감사','응원','기대','설레','팬이','천재','미모','비주얼','존잘','존예','심쿵','최애','울었','눈물나','미쳤'];
+const NEG_KO=['싫','별로','최악','실망','아쉽','짜증','화나','불편','노잼','지루','그만','역겹','끔찍','별루','뭐하'];
+const POS_EN=['love','loved','lovely','amazing','awesome','best','cute','adorable','beautiful','perfect','great','handsome','precious','happy','thank','legend','iconic','favorite','fav','proud','excited','funny','lol','haha','pretty','stunning','talented','king','queen','crying','sobbing','cutest'];
+const NEG_EN=['hate','worst','boring','disappointed','disappointing','annoying','cringe','ugly','terrible','awful','flop','waste'];
+const POS_EMO=/[❤🧡💛💚💙💜🖤🤍💖💗💓💞💕😍🥰😊😂🤣✨🔥👍🥹😭💯🎉]/u;
+const NEG_EMO=/[👎😡💢😠🤮🙄😤]/u;
+function sentiment(t){
+  const low=t.toLowerCase();let s=0;
+  for(const w of POS_KO)if(t.includes(w)){s++;break;}
+  for(const w of NEG_KO)if(t.includes(w)){s--;break;}
+  for(const w of POS_EN)if(low.includes(w)){s++;break;}
+  for(const w of NEG_EN)if(low.includes(w)){s--;break;}
+  if(POS_EMO.test(t))s++;
+  if(NEG_EMO.test(t))s--;
+  return s>0?'긍정':s<0?'부정':'중립';
+}
+function tokenize(t){return (t.toLowerCase().match(/[가-힣]{2,}|[a-z]{3,}/g)||[]).filter(w=>!STOP.has(w));}
+
+/* ================================================================
+   TAB 1 — 채널 전체 분석
+================================================================ */
+let CH=null, CHV=[], CHA=null;
+function analyzeDiscoveredChannel(id){$('chInput').value=id;switchTab(1);$('chInput').focus();}
+function parseChannel(s){
+  s=s.trim();
+  let m=s.match(/channel\/(UC[0-9A-Za-z_-]{22})/); if(m)return{id:m[1]};
+  m=s.match(/@([A-Za-z0-9._-]+)/); if(m)return{handle:'@'+m[1]};
+  if(/^UC[0-9A-Za-z_-]{22}$/.test(s))return{id:s};
+  m=s.match(/\/(?:c|user)\/([^\/?#]+)/); if(m)return{user:m[1]};
+  return{query:s};
+}
+async function runChannel(){
+  const btn=$('chBtn');btn.disabled=true;clearLog('chLog');
+  try{
+    if(!$('apiKey').value.trim())throw new Error('API 키를 입력하세요.');
+    if(!$('chInput').value.trim())throw new Error('채널 주소를 입력하세요.');
+    const ref=parseChannel($('chInput').value);
+    log('chLog','채널 확인 중...');
+    let data;
+    if(ref.id)data=await yt('channels',{part:'snippet,statistics,contentDetails',id:ref.id});
+    else if(ref.handle)data=await yt('channels',{part:'snippet,statistics,contentDetails',forHandle:ref.handle});
+    else if(ref.user)data=await yt('channels',{part:'snippet,statistics,contentDetails',forUsername:ref.user});
+    else{
+      log('chLog','검색으로 채널 조회(할당량 100 소모)...');
+      const s=await yt('search',{part:'snippet',type:'channel',q:ref.query,maxResults:1});
+      if(!s.items?.length)throw new Error('채널을 찾지 못했습니다.');
+      data=await yt('channels',{part:'snippet,statistics,contentDetails',id:s.items[0].snippet.channelId});
+    }
+    if(!data.items?.length)throw new Error('채널을 찾지 못했습니다.');
+    const c=data.items[0];
+    CH={id:c.id,title:c.snippet.title,subs:+c.statistics.subscriberCount||0,uploads:c.contentDetails.relatedPlaylists.uploads};
+    log('chLog','채널: '+CH.title+' (구독 '+fmt(CH.subs)+')');
+
+    const from=$('chFrom').value?new Date($('chFrom').value):null;
+    const to=$('chTo').value?new Date($('chTo').value+'T23:59:59'):null;
+    const maxV=parseInt($('chMax').value);
+    let ids=[],token='',stop=false;
+    while(!stop){
+      const p={part:'contentDetails,snippet',playlistId:CH.uploads,maxResults:50};
+      if(token)p.pageToken=token;
+      const pl=await yt('playlistItems',p);
+      for(const it of pl.items){
+        const pub=new Date(it.contentDetails.videoPublishedAt||it.snippet.publishedAt);
+        if(to&&pub>to)continue;
+        if(from&&pub<from){stop=true;break;}
+        ids.push(it.contentDetails.videoId);
+        if(ids.length>=maxV){stop=true;break;}
+      }
+      token=pl.nextPageToken;if(!token)break;
+    }
+    if(!ids.length)throw new Error('해당 기간에 업로드된 영상이 없습니다.');
+    log('chLog','영상 '+ids.length+'개 상세 조회 중...');
+
+    CHV=[];
+    for(let i=0;i<ids.length;i+=50){
+      const v=await yt('videos',{part:'snippet,statistics,contentDetails',id:ids.slice(i,i+50).join(',')});
+      for(const it of v.items){
+        const st=it.statistics,dur=parseISODur(it.contentDetails.duration);
+        const views=+st.viewCount||0,likes=+st.likeCount||0,cmts=+st.commentCount||0;
+        const d=daysSince(it.snippet.publishedAt);
+        const pub=new Date(it.snippet.publishedAt); // KST 로컬 브라우저 기준
+        const shortText=((it.snippet.title||'')+' '+(it.snippet.description||'')).toLowerCase();
+        // API만으로 세로형 여부를 알 수 없어 60초 이하는 쇼츠로, 61~180초는 #Shorts/#쇼츠 표기가 있을 때 쇼츠로 추정
+        const isShort=dur>0&&(dur<=60||(dur<=180&&/(#shorts\b|#쇼츠\b)/i.test(shortText)));
+        CHV.push({id:it.id,title:it.snippet.title,published:it.snippet.publishedAt,
+          dow:pub.getDay(),hour:pub.getHours(),dur,
+          shorts:isShort,
+          views,likes,comments:cmts,days:d,velocity:views/d,
+          engage:views?(likes+cmts)/views*100:0});
+      }
+    }
+    CHA=buildChannelReport();
+    renderChannelReport(CHA);
+    $('chReport').style.display='block';$('chExport').style.display='block';
+    $('chReport').scrollIntoView({behavior:'smooth'});
+    log('chLog','리포트 생성 완료.');
+  }catch(e){log('chLog','오류: '+e.message);}
+  btn.disabled=false;
+}
+
+function buildChannelReport(){
+  const V=CHV;
+  const med=median(V.map(v=>v.velocity));
+  V.forEach(v=>v.hot=med>0&&v.velocity>=med*2);
+  const longs=V.filter(v=>!v.shorts),shorts=V.filter(v=>v.shorts);
+
+  // 요일/시간대 성과 (조회수 중앙값)
+  const byDow=Array.from({length:7},()=>[]);
+  V.forEach(v=>byDow[v.dow].push(v.velocity));
+  const dowMed=byDow.map(a=>median(a));
+  const hourBand=h=>h<6?'새벽(0-6)':h<12?'오전(6-12)':h<18?'오후(12-18)':'저녁(18-24)';
+  const byBand={};V.forEach(v=>{const b=hourBand(v.hour);(byBand[b]=byBand[b]||[]).push(v.velocity);});
+  const bandMed=Object.entries(byBand).map(([b,a])=>[b,median(a),a.length]).sort((x,y)=>y[1]-x[1]);
+
+  // 제목 키워드 vs 성과: 상위 25% vs 하위 25%
+  const sorted=[...V].sort((a,b)=>b.velocity-a.velocity);
+  const q=Math.max(1,Math.floor(V.length/4));
+  const topQ=sorted.slice(0,q),botQ=sorted.slice(-q);
+  const cnt=vs=>{const m={};vs.forEach(v=>{for(const w of new Set(tokenize(v.title)))m[w]=(m[w]||0)+1;});return m;};
+  const tc=cnt(topQ),bc=cnt(botQ);
+  const titleWin=Object.entries(tc).filter(([w,c])=>c>=2&&c>=(bc[w]||0)*2).sort((a,b)=>b[1]-a[1]).slice(0,10);
+
+  // 월별 추이
+  const byMonth={};V.forEach(v=>{const m=v.published.slice(0,7);(byMonth[m]=byMonth[m]||{n:0,views:0,vel:[]});byMonth[m].n++;byMonth[m].views+=v.views;byMonth[m].vel.push(v.velocity);});
+  const months=Object.entries(byMonth).sort((a,b)=>a[0]<b[0]?-1:1).map(([m,o])=>[m,o.n,o.views,median(o.vel)]);
+
+  // 업로드 주기
+  const dates=V.map(v=>new Date(v.published)).sort((a,b)=>a-b);
+  const spanW=dates.length>1?(dates[dates.length-1]-dates[0])/86400000/7:1;
+  const perWeek=V.length/Math.max(1,spanW);
+
+  // 추적 키워드 → 제목 매칭 성과
+  const track=getTrack();
+  const trackPerf=track.map(t=>{
+    const hit=V.filter(v=>v.title.toLowerCase().includes(t.toLowerCase()));
+    return[t,hit.length,hit.length?median(hit.map(v=>v.velocity)):0];
+  }).filter(x=>x[1]>0).sort((a,b)=>b[2]-a[2]);
+
+  // 인사이트 생성
+  const ins=[];
+  const bestDow=dowMed.indexOf(Math.max(...dowMed));
+  if(byDow[bestDow].length>=2)ins.push('업로드 요일별 일평균 조회수 중앙값이 가장 높은 요일은 <b>'+DAYS[bestDow]+'요일</b>('+fmt(Math.round(dowMed[bestDow]))+'). 표본 '+byDow[bestDow].length+'개 기준이며, 신규 콘텐츠 편성 시 우선 검토 대상.');
+  if(bandMed.length>=2)ins.push('시간대별로는 <b>'+bandMed[0][0]+'</b> 업로드 성과가 최상('+fmt(Math.round(bandMed[0][1]))+'/일, 표본 '+bandMed[0][2]+'개). 최하 시간대 대비 '+(bandMed[bandMed.length-1][1]>0?(bandMed[0][1]/bandMed[bandMed.length-1][1]).toFixed(1)+'배':'우위')+'.');
+  if(shorts.length>=3&&longs.length>=3){
+    const sm=median(shorts.map(v=>v.velocity)),lm=median(longs.map(v=>v.velocity));
+    ins.push('쇼츠 '+shorts.length+'개 vs 롱폼 '+longs.length+'개 — 일평균 조회수 중앙값 쇼츠 '+fmt(Math.round(sm))+' / 롱폼 '+fmt(Math.round(lm))+'. '+(sm>lm*1.5?'쇼츠가 유입 효율 우위 → 본편 하이라이트의 쇼츠 재가공 확대 검토.':lm>sm*1.5?'롱폼이 우위 → 채널 시청층이 본편 소비형. 쇼츠는 유입용 보조로 운용.':'양 포맷 균형. 현행 믹스 유지 가능.'));
+  }
+  const hotN=V.filter(v=>v.hot);
+  if(hotN.length)ins.push('일평균 강세(중앙값 2배 이상) 영상 '+hotN.length+'개: '+hotN.slice(0,3).map(v=>'「'+v.title.slice(0,20)+'」').join(', ')+(hotN.length>3?' 외':'')+' — 성공 요인(출연·포맷·썸네일)의 공통분모 추출 및 후속편 검토 대상.');
+  if(titleWin.length)ins.push('성과 상위 25% 영상 제목에서 유의하게 자주 등장하는 단어: '+titleWin.slice(0,6).map(k=>'"'+k[0]+'"').join(', ')+' — 제목·썸네일 카피 설계 시 참고.');
+  ins.push('업로드 주기 주당 약 '+perWeek.toFixed(1)+'개. '+(perWeek<1?'주 1회 미만 — 알고리즘 노출 유지에 불리할 수 있어 쇼츠 등 경량 포맷으로 빈도 보완 검토.':'빈도는 양호. 품질·일관성 유지가 관건.'));
+  if(trackPerf.length)ins.push('추적 키워드 중 제목 포함 시 성과 최상: "'+trackPerf[0][0]+'" (영상 '+trackPerf[0][1]+'개, 일평균 중앙값 '+fmt(Math.round(trackPerf[0][2]))+') — 해당 출연자/주제 중심 기획의 근거 데이터.');
+  const engTop=[...V].sort((a,b)=>b.engage-a.engage)[0];
+  if(engTop)ins.push('반응률 1위 「'+engTop.title.slice(0,26)+'」('+engTop.engage.toFixed(2)+'%) — 조회수 규모와 별개로 팬덤 결집도가 가장 높음. 커뮤니티 이벤트·굿즈 연계 실험에 적합.');
+
+  return{med,dowMed,byDow,bandMed,months,perWeek,shorts,longs,titleWin,trackPerf,ins,sorted};
+}
+
+function renderChannelReport(A){
+  const V=CHV,today=new Date().toISOString().slice(0,10);
+  const totV=V.reduce((s,v)=>s+v.views,0),totL=V.reduce((s,v)=>s+v.likes,0),totC=V.reduce((s,v)=>s+v.comments,0);
+  let h='<div class="rephead"><h2>'+esc(CH.title)+' — 채널 성과 리포트</h2>'+
+    '<div class="sub">생성 '+today+' · 구독 '+fmt(CH.subs)+' · 분석 영상 '+V.length+'개 ('+V[V.length-1]?.published.slice(0,10)+' ~ '+V[0]?.published.slice(0,10)+') · 일평균 강세 기준: 일평균 조회수 ≥ 채널 중앙값 '+fmt(Math.round(A.med))+' × 2</div></div>';
+
+  h+='<div class="kpi"><div><b>'+fmt(totV)+'</b><span>합산 조회수</span></div>'+
+     '<div><b>'+fmt(Math.round(A.med))+'</b><span>일평균 조회수 중앙값</span></div>'+
+     '<div><b>'+(totV?((totL+totC)/totV*100).toFixed(2):'0')+'%</b><span>평균 반응률</span></div>'+
+     '<div><b>'+A.perWeek.toFixed(1)+'</b><span>주당 업로드</span></div>'+
+     '<div><b>'+A.shorts.length+' / '+A.longs.length+'</b><span>쇼츠 / 롱폼</span></div></div>';
+
+  h+='<h3 class="sec">핵심 인사이트 — 제작·편성 관점</h3>';
+  for(const i of A.ins)h+='<div class="insight">'+i+'</div>';
+
+  // 요일/시간대
+  const maxD=Math.max(...A.dowMed,1);
+  h+='<div class="grid2"><div><h3 class="sec">업로드 요일별 성과 (일평균 조회수 중앙값)</h3>';
+  for(let d=0;d<7;d++)h+=kwline(DAYS[d]+'요일 ('+A.byDow[d].length+'개)',Math.round(A.dowMed[d]),maxD);
+  h+='</div><div><h3 class="sec">업로드 시간대별 성과</h3>';
+  const maxB=A.bandMed[0]?Math.max(A.bandMed[0][1],1):1;
+  for(const[b,m,n]of A.bandMed)h+=kwline(b+' ('+n+'개)',Math.round(m),maxB,true);
+  h+='<div class="note">시간은 이 브라우저의 로컬 시간대(KST) 기준. 쇼츠는 60초 이하 또는 180초 이하이면서 제목·설명에 #Shorts/#쇼츠가 있는 영상으로 추정합니다.</div></div></div>';
+
+  // 월별 추이
+  if(A.months.length>1){
+    const maxM=Math.max(...A.months.map(m=>m[3]),1);
+    h+='<h3 class="sec">월별 업로드·성과 추이</h3>';
+    for(const[m,n,views,vel]of A.months)h+=kwline(m+' ('+n+'개)',Math.round(vel),maxM);
+    h+='<div class="note">막대 = 해당 월 업로드 영상들의 일평균 조회수 중앙값. 최근 월은 데이터 누적 중이라 낮게 보일 수 있음.</div>';
+  }
+
+  // 제목 키워드
+  if(A.titleWin.length){
+    h+='<h3 class="sec">성과 상위 25% 제목 빈출 키워드</h3>';
+    const maxT=A.titleWin[0][1];
+    for(const[w,c]of A.titleWin)h+=kwline(w,c,maxT,true);
+  }
+  if(A.trackPerf.length){
+    h+='<h3 class="sec">추적 키워드별 성과 (제목 매칭)</h3>';
+    const maxTr=Math.max(...A.trackPerf.map(t=>t[2]),1);
+    for(const[t,n,m]of A.trackPerf)h+=kwline(t+' ('+n+'개)',Math.round(m),maxTr,true);
+  }
+
+  // 상/하위 영상
+  h+='<h3 class="sec">성과 상위 10 (일평균 조회수 기준)</h3>'+chTable(A.sorted.slice(0,10));
+  h+='<h3 class="sec">성과 하위 5 — 원인 점검 대상</h3>'+chTable(A.sorted.slice(-5).reverse());
+
+  $('chReport').innerHTML=h;
+}
+function chTable(rows){
+  let t='<div style="overflow-x:auto"><table><thead><tr><th>영상</th><th class="num">조회수</th><th class="num">일평균</th><th class="num">좋아요</th><th class="num">댓글</th><th class="num">반응률</th><th>업로드</th></tr></thead><tbody>';
+  for(const v of rows)t+='<tr><td class="vtitle">'+esc(v.title)+(v.hot?'<span class="badge hot">일평균 강세</span>':'')+(v.shorts?'<span class="badge shorts">쇼츠</span>':'')+'</td>'+
+    '<td class="num">'+fmt(v.views)+'</td><td class="num"><b>'+fmt(Math.round(v.velocity))+'</b></td><td class="num">'+fmt(v.likes)+'</td><td class="num">'+fmt(v.comments)+'</td><td class="num">'+v.engage.toFixed(2)+'%</td>'+
+    '<td style="font-family:var(--mono);font-size:11px">'+v.published.slice(0,10)+' '+DAYS[v.dow]+'</td></tr>';
+  return t+'</tbody></table></div>';
+}
+function chCSV(){
+  const rows=[['영상ID','제목','업로드','요일','시간','포맷','조회수','일평균','좋아요','댓글','반응률%','일평균강세']];
+  for(const v of CHV)rows.push([v.id,v.title,v.published.slice(0,10),DAYS[v.dow],v.hour,v.shorts?'쇼츠':'롱폼',v.views,Math.round(v.velocity),v.likes,v.comments,v.engage.toFixed(2),v.hot?'Y':'']);
+  dlCSV(rows,'channel_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+function chCopy(){
+  if(!CHA)return;
+  const pack={channel:CH.title,subscribers:CH.subs,videosAnalyzed:CHV.length,
+    medianViewsPerDay:Math.round(CHA.med),uploadsPerWeek:+CHA.perWeek.toFixed(1),
+    byDayOfWeek:Object.fromEntries(DAYS.map((d,i)=>[d,Math.round(CHA.dowMed[i])])),
+    byTimeBand:CHA.bandMed,monthly:CHA.months,
+    topTitleKeywords:CHA.titleWin,trackedKeywordPerf:CHA.trackPerf,
+    top10:CHA.sorted.slice(0,10).map(v=>({title:v.title,views:v.views,perDay:Math.round(v.velocity),engage:+v.engage.toFixed(2),shorts:v.shorts,dow:DAYS[v.dow]})),
+    bottom5:CHA.sorted.slice(-5).map(v=>({title:v.title,views:v.views,perDay:Math.round(v.velocity)}))};
+  navigator.clipboard.writeText('다음 유튜브 채널 성과 데이터를 PD 관점에서 심층 해석하고 편성 전략을 제안해줘:\n'+JSON.stringify(pack,null,1)).then(()=>{$('chCopyMsg').textContent='복사됨 — Claude 대화창에 붙여넣으세요.';});
+}
+
+/* ================================================================
+   TAB 2 — 개별 영상 심층 분석
+================================================================ */
+let VID=null, VC=[], VA=null;
+function extractVideoId(url){
+  const m=url.match(/(?:v=|\/videos\/|embed\/|youtu\.be\/|\/v\/|\/shorts\/|\/live\/)([0-9A-Za-z_-]{11})/);
+  if(m)return m[1];
+  if(/^[0-9A-Za-z_-]{11}$/.test(url.trim()))return url.trim();
+  return null;
+}
+async function runVideo(){
+  const btn=$('vidBtn');btn.disabled=true;clearLog('vidLog');
+  try{
+    if(!$('apiKey').value.trim())throw new Error('API 키를 입력하세요.');
+    const id=extractVideoId($('vidInput').value);
+    if(!id)throw new Error('영상 URL에서 ID를 찾지 못했습니다.');
+    log('vidLog','영상 정보 조회 중...');
+    const d=await yt('videos',{part:'snippet,statistics,contentDetails',id});
+    if(!d.items?.length)throw new Error('영상을 찾지 못했습니다.');
+    const it=d.items[0],st=it.statistics;
+    VID={id,title:it.snippet.title,channel:it.snippet.channelTitle,published:it.snippet.publishedAt,
+      dur:parseISODur(it.contentDetails.duration),
+      views:+st.viewCount||0,likes:+st.likeCount||0,comments:+st.commentCount||0,
+      days:daysSince(it.snippet.publishedAt)};
+    log('vidLog','「'+VID.title.slice(0,40)+'」 · 표기 댓글수 '+fmt(VID.comments));
+
+    const cap=parseInt($('vidMax').value);
+    VC=[];let token='';
+    try{
+      while(VC.length<cap){
+        const p={part:'snippet,replies',videoId:id,maxResults:100,textFormat:'plainText',order:'relevance'};
+        if(token)p.pageToken=token;
+        const r=await yt('commentThreads',p);
+        for(const item of r.items){
+          const t=item.snippet.topLevelComment.snippet;
+          VC.push({type:'댓글',author:t.authorDisplayName||'',text:t.textDisplay||'',likes:+t.likeCount||0,published:t.publishedAt||'',replies:item.snippet.totalReplyCount||0});
+          for(const rp of(item.replies?.comments||[])){
+            const r2=rp.snippet;
+            VC.push({type:'답글',author:r2.authorDisplayName||'',text:r2.textDisplay||'',likes:+r2.likeCount||0,published:r2.publishedAt||'',replies:0});
+          }
+        }
+        log('vidLog','수집 중... 누적 '+VC.length+'개');
+        token=r.nextPageToken;if(!token)break;
+      }
+    }catch(e){
+      if(e.message==='COMMENTS_DISABLED')log('vidLog','이 영상은 댓글이 비활성화되어 있어 지표만 분석합니다.');
+      else throw e;
+    }
+    VC=VC.slice(0,cap);
+    log('vidLog','총 '+VC.length+'개 분석 중...');
+    VA=buildVideoReport();
+    renderVideoReport(VA);
+    $('vidReport').style.display='block';$('vidExport').style.display='block';
+    $('vidReport').scrollIntoView({behavior:'smooth'});
+    log('vidLog','리포트 생성 완료.');
+  }catch(e){log('vidLog','오류: '+e.message);}
+  btn.disabled=false;
+}
+
+function buildVideoReport(){
+  const track=getTrack();
+  const lang={},senti={긍정:0,중립:0,부정:0},kw={},trackCount={};
+  track.forEach(t=>trackCount[t]=0);
+  const dateHist={};let replyThreads=0,threads=0,likeSum=0;
+  for(const c of VC){
+    lang[detectLang(c.text)]=(lang[detectLang(c.text)]||0)+1;
+    senti[sentiment(c.text)]++;
+    for(const w of tokenize(c.text))kw[w]=(kw[w]||0)+1;
+    const low=c.text.toLowerCase();
+    for(const t of track)if(low.includes(t.toLowerCase()))trackCount[t]++;
+    if(c.type==='댓글'){threads++;if(c.replies>0)replyThreads++;}
+    likeSum+=c.likes;
+    const d=c.published.slice(0,10);if(d)dateHist[d]=(dateHist[d]||0)+1;
+  }
+  const langArr=Object.entries(lang).sort((a,b)=>b[1]-a[1]);
+  const topKw=Object.entries(kw).sort((a,b)=>b[1]-a[1]).slice(0,25);
+  const topLiked=[...VC].sort((a,b)=>b.likes-a.likes).slice(0,12);
+  const dates=Object.entries(dateHist).sort((a,b)=>a[0]<b[0]?-1:1);
+  const n=Math.max(1,VC.length);
+  const koShare=(lang['한국어']||0)/n*100;
+
+  // 반응 집중도: 업로드 후 72시간 내 댓글 비중
+  const pubT=new Date(VID.published).getTime();
+  const within72=VC.filter(c=>c.published&&(new Date(c.published).getTime()-pubT)<=72*3600000).length;
+
+  const ins=[];
+  ins.push('좋아요율 '+(VID.views?(VID.likes/VID.views*100).toFixed(2):'0')+'% · 댓글율 '+(VID.views?(VID.comments/VID.views*100).toFixed(3):'0')+'% — 통상 좋아요율 3~5%면 우수, 그 이상은 팬덤 결집 콘텐츠로 판단.');
+  ins.push('해외 팬 비중(비한국어 댓글) '+(100-koShare).toFixed(1)+'%. '+(koShare<50?'해외 반응이 과반 — 다국어 자막 및 현지어 커뮤니티 포스트가 성과 레버.':'국내 중심 반응 — 해외 확산은 쇼츠·번역 자막으로 보완 여지.'));
+  const posR=senti['긍정']/n*100,negR=senti['부정']/n*100;
+  ins.push('긍정 '+posR.toFixed(1)+'% / 부정 '+negR.toFixed(1)+'% (사전 기반 근사). '+(negR>10?'부정 비율이 유의미 — 하단 부정 키워드 원문 확인 권장.':'우호적 반응 우세.'));
+  ins.push('업로드 72시간 내 작성 댓글 비중 '+(within72/n*100).toFixed(0)+'% — '+(within72/n>0.6?'초기 화력 집중형. 공개 직후 커뮤니티·SNS 동시 푸시가 유효한 콘텐츠.':'롱테일 유입형. 검색·추천으로 꾸준히 발견되는 중 — 제목·태그 최적화 가치가 큼.'));
+  if(replyThreads/Math.max(1,threads)>0.15)ins.push('답글 발생 스레드 비율 '+(replyThreads/threads*100).toFixed(0)+'% — 팬 간 대화가 활발. 고정댓글로 대화 주제를 던지면 체류 지표에 유리.');
+  const tt=Object.entries(trackCount).sort((a,b)=>b[1]-a[1]).filter(x=>x[1]>0);
+  if(tt.length)ins.push('추적 키워드 언급: '+tt.map(x=>'"'+x[0]+'" '+x[1]+'회').join(' · ')+(tt.length>1?' — 언급 격차는 팬덤 화력 배분의 참고 지표.':''));
+  if(topKw.length)ins.push('댓글 최다 키워드 '+topKw.slice(0,5).map(k=>'"'+k[0]+'"').join(', ')+' — 팬덤이 실제 쓰는 언어. 후속편 제목·썸네일·커뮤니티 카피에 재사용 권장.');
+
+  return{lang:langArr,senti,topKw,topLiked,trackCount,dates,within72,replyThreads,threads,ins,n};
+}
+
+function renderVideoReport(A){
+  const today=new Date().toISOString().slice(0,10);
+  const durS=VID.dur?Math.floor(VID.dur/60)+'분 '+(VID.dur%60)+'초':'-';
+  let h='<div class="rephead"><h2>'+esc(VID.title)+'</h2>'+
+    '<div class="sub">'+esc(VID.channel)+' · 업로드 '+VID.published.slice(0,10)+' ('+Math.floor(VID.days)+'일 경과) · 길이 '+durS+' · 리포트 생성 '+today+' · 댓글 '+fmt(A.n)+'개 분석(관련도순)</div></div>';
+
+  h+='<div class="kpi"><div><b>'+fmt(VID.views)+'</b><span>조회수</span></div>'+
+     '<div><b>'+fmt(Math.round(VID.views/VID.days))+'</b><span>일평균 조회수</span></div>'+
+     '<div><b>'+fmt(VID.likes)+'</b><span>좋아요 ('+(VID.views?(VID.likes/VID.views*100).toFixed(2):'0')+'%)</span></div>'+
+     '<div><b>'+fmt(VID.comments)+'</b><span>댓글수 (영상 표기)</span></div>'+
+     '<div><b>'+(A.n?((A.lang[0]&&A.lang[0][0]==='한국어'?100-(A.lang[0][1]/A.n*100):100)).toFixed(0):'0')+'%</b><span>해외 댓글 비중(추정)</span></div></div>';
+
+  h+='<h3 class="sec">핵심 인사이트 — 제작 관점</h3>';
+  for(const i of A.ins)h+='<div class="insight">'+i+'</div>';
+
+  if(A.n>0){
+    const maxL=A.lang[0]?A.lang[0][1]:1;
+    h+='<div class="grid2"><div><h3 class="sec">댓글 언어권 분포</h3>';
+    for(const[l,c]of A.lang.slice(0,8))h+=kwline(l,c,maxL);
+    h+='</div><div><h3 class="sec">감성 분포 (근사)</h3>';
+    const maxS=Math.max(A.senti['긍정'],A.senti['중립'],A.senti['부정'],1);
+    for(const k of['긍정','중립','부정'])h+=kwline(k,A.senti[k],maxS,k==='긍정');
+    h+='<div class="note">한/영 감성 사전 + 이모지 근사치. 팬덤 반어("미쳤다" 등)는 긍정 처리하나 오차 존재.</div></div></div>';
+
+    const maxK=A.topKw[0]?A.topKw[0][1]:1;
+    h+='<div class="grid2"><div><h3 class="sec">댓글 키워드 TOP 25</h3>';
+    for(const[w,c]of A.topKw)h+=kwline(w,c,maxK);
+    h+='</div><div>';
+    const tt=Object.entries(A.trackCount).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
+    if(tt.length){
+      h+='<h3 class="sec">추적 키워드 언급량</h3>';
+      const maxT=Math.max(tt[0][1],1);
+      for(const[t,c]of tt)h+=kwline(t,c,maxT,true);
+    }
+    if(A.dates.length>1){
+      h+='<h3 class="sec">일자별 댓글 유입 (반응 곡선)</h3>';
+      const maxD=Math.max(...A.dates.map(d=>d[1]),1);
+      for(const[d,c]of A.dates.slice(0,20))h+=kwline(d,c,maxD);
+      if(A.dates.length>20)h+='<div class="note">최초 20일까지 표시. 전체는 CSV 참조.</div>';
+      h+='<div class="note">관련도순 수집이라 실제 유입 곡선과 표본 차이가 있을 수 있음.</div>';
+    }
+    h+='</div></div>';
+
+    h+='<h3 class="sec">좋아요 상위 댓글 — 팬덤 공감 포인트</h3><ul class="qlist">';
+    for(const c of A.topLiked)h+='<li>'+esc(c.text.slice(0,180))+(c.text.length>180?'…':'')+'<div class="meta">👍 '+fmt(c.likes)+' · '+esc(c.author)+' · '+c.published.slice(0,10)+(c.replies?' · 답글 '+c.replies:'')+'</div></li>';
+    h+='</ul>';
+  }
+  $('vidReport').innerHTML=h;
+}
+function vidCSV(){
+  const rows=[['구분','작성자','내용','좋아요','작성일','답글수']];
+  for(const c of VC)rows.push([c.type,c.author,c.text.replace(/\r?\n/g,' '),c.likes,c.published,c.replies]);
+  dlCSV(rows,'comments_'+VID.id+'.csv');
+}
+function vidCopy(){
+  if(!VA)return;
+  const pack={video:VID.title,channel:VID.channel,published:VID.published.slice(0,10),
+    views:VID.views,likes:VID.likes,commentsTotal:VID.comments,viewsPerDay:Math.round(VID.views/VID.days),
+    analyzed:VA.n,languages:Object.fromEntries(VA.lang),sentiment:VA.senti,
+    topKeywords:VA.topKw,trackedKeywords:VA.trackCount,
+    topLikedComments:VA.topLiked.map(c=>({text:c.text.slice(0,200),likes:c.likes})),
+    sampleComments:VC.slice(0,200).map(c=>c.text.slice(0,120))};
+  navigator.clipboard.writeText('다음 유튜브 영상 반응 데이터를 PD 관점에서 심층 해석해줘 (팬덤 반응의 결, 후속 콘텐츠 방향, 카피 제안 포함):\n'+JSON.stringify(pack,null,1)).then(()=>{$('vidCopyMsg').textContent='복사됨 — Claude 대화창에 붙여넣으세요.';});
+}
+
+/* ---------- 공용 CSV ---------- */
+function dlCSV(rows,name){
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=name;a.click();
+}
+</script>
+</body>
+</html>
