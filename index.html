@@ -83,6 +83,13 @@ textarea{width:100%;padding:9px 11px;margin-top:5px;border:1px solid var(--line)
 .metric-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
 .metric-tabs button{margin:0;padding:7px 11px;font-size:12px}
 .metric-tabs button.on{background:var(--accent)}
+.trend-signals{margin:8px 0 0;padding-left:24px}
+.trend-signals li{padding:10px 4px 11px 3px;border-bottom:1px dashed var(--line)}
+.trend-signals li::marker{font-family:var(--mono);font-weight:800;color:var(--accent)}
+.signal-title{font-weight:800}
+.signal-tag{display:inline-block;font-size:10px;font-weight:800;background:var(--accent-soft);color:var(--accent);padding:2px 6px;border-radius:3px;margin-right:6px}
+.signal-meta{font-size:11px;color:var(--sub);font-family:var(--mono);margin-top:3px}
+.signal-action{font-size:12px;margin-top:3px}
 @media print{
   body{background:#fff;font-size:12px}
   .card{border:none;padding:0;margin-top:12px}
@@ -95,7 +102,7 @@ textarea{width:100%;padding:9px 11px;margin-top:5px;border:1px solid var(--line)
 
 <header>
   <h1>K-POP 유튜브 트렌드 레이더 <span class="tag">DISCOVERY</span></h1>
-  <p>최근 조회수가 높은 영상에서 뜨는 채널·아티스트 후보를 발견하고, 발견한 대상을 채널/댓글 분석으로 깊게 파고드는 PD용 도구입니다.</p>
+  <p>최근 조회수뿐 아니라 좋아요율·댓글률·반응 증가 속도까지 함께 비교해 뜨는 채널·아티스트·포맷을 발견하는 PD용 도구입니다.</p>
 </header>
 
 <div class="card inputcard">
@@ -146,6 +153,10 @@ textarea{width:100%;padding:9px 11px;margin-top:5px;border:1px solid var(--line)
         <label>카테고리</label>
         <select id="trCategory"><option value="all" selected>전체 카테고리</option><option value="10">음악만</option></select>
       </div>
+      <div>
+        <label>반응률 최소 조회수</label>
+        <select id="trRateFloor"><option value="1000">1천 이상</option><option value="10000" selected>1만 이상</option><option value="50000">5만 이상</option><option value="100000">10만 이상</option></select>
+      </div>
       <div class="wide">
         <label>추가 검색어 (선택, 줄바꿈 구분)</label>
         <textarea id="trCustom" placeholder="예: rookie idol&#10;5세대 걸그룹&#10;보이그룹 직캠"></textarea>
@@ -156,7 +167,7 @@ textarea{width:100%;padding:9px 11px;margin-top:5px;border:1px solid var(--line)
       </div>
     </div>
     <div class="note" id="trQuotaNote">검색 호출량 계산 중…</div>
-    <div class="warn">‘아티스트 후보’는 공식 채널명 또는 영상 제목 규칙으로 자동 추정합니다. 방송사·레이블 영상은 제목 형식에 따라 멤버명이나 프로그램명이 잡힐 수 있으므로 최종 판단 전 원본 영상을 확인하세요.</div>
+    <div class="warn">‘아티스트 후보’는 공식 채널명 또는 영상 제목 규칙으로 자동 추정합니다. 반응률 순위는 작은 표본 왜곡을 줄이기 위해 선택한 최소 조회수 이상 영상을 우선합니다. YouTube 검색 API는 좋아요순 검색을 지원하지 않으므로, 먼저 조회수·최신순으로 후보군을 확보한 뒤 좋아요·댓글 지표로 재정렬합니다.</div>
     <button class="primary" onclick="runTrend()" id="trBtn">K-POP 트렌드 탐색</button>
     <div class="log" id="trLog"></div>
   </div>
@@ -312,6 +323,7 @@ function updateTrendQuota(){
   $('trQuotaNote').textContent=`예상 search.list 호출 ${calls}회 · 기본 일일 한도 100회. 결과 상세 조회는 별도 저비용 list 호출로 묶어서 처리합니다.`;
 }
 ['trPreset','trRegion','trMode'].forEach(id=>document.addEventListener('change',e=>{if(e.target?.id===id)updateTrendQuota();}));
+document.addEventListener('change',e=>{if(e.target?.id==='trRateFloor'&&TRV.length){if(TRMETA)TRMETA.rateFloor=rateFloor();buildTrendAggregates();renderTrendReport('engage');}});
 document.addEventListener('input',e=>{if(e.target?.id==='trCustom')updateTrendQuota();});
 setTimeout(updateTrendQuota,0);
 
@@ -359,28 +371,45 @@ function formatDuration(sec){
   return m+'분'+(s?' '+s+'초':'');
 }
 function formatShort(v){return v.dur>0&&v.dur<240;}
+function pct(n,d){return d>0?n/d*100:0;}
+function rateFloor(){return +($('trRateFloor')?.value||10000);}
+function rateEligible(v){return v.views>=rateFloor();}
+function metricNum(v,key){const n=v?.[key];return Number.isFinite(n)?n:-1;}
+function sortRate(key){return [...TRV].sort((a,b)=>(rateEligible(b)?1:0)-(rateEligible(a)?1:0)||metricNum(b,key)-metricNum(a,key)||b.views-a.views);}
 function trendPassExclude(v,ex){
   const t=(v.title+' '+v.channelTitle).toLowerCase();
   return !ex.some(k=>k&&t.includes(k));
 }
 function loadTrendSnapshots(){
-  try{return JSON.parse(localStorage.getItem('kpopTrendSnapshotsV1')||'{}');}catch{return {};}
+  try{
+    return JSON.parse(localStorage.getItem('kpopTrendSnapshotsV2')||localStorage.getItem('kpopTrendSnapshotsV1')||'{}');
+  }catch{return {};}
 }
 function applyAndSaveTrendSnapshots(videos){
   const prev=loadTrendSnapshots(),now=Date.now(),next={};
   for(const v of videos){
     const p=prev[v.id];
-    if(p&&p.ts&&Number.isFinite(+p.views)&&v.views>=+p.views){
+    if(p&&p.ts){
       const dh=Math.max(1/60,(now-p.ts)/3600000);
-      v.deltaViews=v.views-(+p.views);v.deltaHours=dh;v.measuredVph=v.deltaViews/dh;
-    }else{v.deltaViews=null;v.deltaHours=null;v.measuredVph=null;}
-    next[v.id]={views:v.views,ts:now,title:v.title,channelTitle:v.channelTitle};
+      if(Number.isFinite(+p.views)&&v.views>=+p.views){v.deltaViews=v.views-(+p.views);v.measuredVph=v.deltaViews/dh;}
+      else{v.deltaViews=null;v.measuredVph=null;}
+      if(Number.isFinite(+p.likes)&&v.likes>=+p.likes){v.deltaLikes=v.likes-(+p.likes);v.measuredLph=v.deltaLikes/dh;}
+      else{v.deltaLikes=null;v.measuredLph=null;}
+      if(Number.isFinite(+p.comments)&&v.comments>=+p.comments){v.deltaComments=v.comments-(+p.comments);v.measuredCph=v.deltaComments/dh;}
+      else{v.deltaComments=null;v.measuredCph=null;}
+      v.deltaHours=dh;
+    }else{
+      v.deltaViews=v.deltaLikes=v.deltaComments=null;
+      v.measuredVph=v.measuredLph=v.measuredCph=null;
+      v.deltaHours=null;
+    }
+    next[v.id]={views:v.views,likes:v.likes,comments:v.comments,ts:now,title:v.title,channelTitle:v.channelTitle};
   }
   // 최근 결과와 기존 30일 이내 결과를 합쳐 최대 1500개만 브라우저에 보관
   const cutoff=now-30*86400000;
   for(const[id,p]of Object.entries(prev))if(!next[id]&&p.ts>=cutoff)next[id]=p;
   const trimmed=Object.fromEntries(Object.entries(next).sort((a,b)=>b[1].ts-a[1].ts).slice(0,1500));
-  try{localStorage.setItem('kpopTrendSnapshotsV1',JSON.stringify(trimmed));}catch{}
+  try{localStorage.setItem('kpopTrendSnapshotsV2',JSON.stringify(trimmed));}catch{}
 }
 
 async function runTrend(){
@@ -416,10 +445,13 @@ async function runTrend(){
       const d=await yt('videos',{part:'snippet,statistics,contentDetails',id:idArr.slice(i,i+50).join(',')});
       for(const it of(d.items||[])){
         const st=it.statistics||{},dur=parseISODur(it.contentDetails?.duration),hours=hoursSince(it.snippet.publishedAt);
-        const views=+st.viewCount||0,likes=+st.likeCount||0,comments=+st.commentCount||0;
+        const likesAvailable=st.likeCount!=null,commentsAvailable=st.commentCount!=null;
+        const views=+st.viewCount||0,likes=likesAvailable?(+st.likeCount||0):0,comments=commentsAvailable?(+st.commentCount||0):0;
         videos.push({id:it.id,title:it.snippet.title,channelId:it.snippet.channelId,channelTitle:it.snippet.channelTitle,
-          published:it.snippet.publishedAt,description:it.snippet.description||'',dur,views,likes,comments,hours,
-          vph:views/hours,vpd:views/(hours/24),engage:views?(likes+comments)/views*100:0,
+          published:it.snippet.publishedAt,description:it.snippet.description||'',dur,views,likes,comments,likesAvailable,commentsAvailable,hours,
+          vph:views/hours,vpd:views/(hours/24),lph:likes/hours,cph:comments/hours,
+          likeRate:likesAvailable?pct(likes,views):null,commentRate:commentsAvailable?pct(comments,views):null,
+          engage:(likesAvailable||commentsAvailable)?pct(likes+comments,views):null,
           sourceCount:sources.get(it.id)?.size||1});
       }
     }
@@ -432,13 +464,14 @@ async function runTrend(){
     const ex=$('trExclude').value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
     TRV=videos.filter(v=>trendPassExclude(v,ex)).map(v=>{
       const c=chMap.get(v.channelId)||{title:v.channelTitle,subs:0,totalViews:0,hidden:true};
-      const a=deriveArtist(v),subBreak=c.subs?v.views/c.subs*100:0;
-      return{...v,subs:c.subs,hiddenSubs:c.hidden,subBreak,artist:a.name,artistConfidence:a.confidence,channelType:classifyChannel(v.channelTitle)};
+      const a=deriveArtist(v),subBreak=c.subs?pct(v.views,c.subs):0;
+      const likeBreak=c.subs?pct(v.likes,c.subs):0,responseBreak=c.subs?pct(v.likes+v.comments,c.subs):0;
+      return{...v,subs:c.subs,hiddenSubs:c.hidden,subBreak,likeBreak,responseBreak,artist:a.name,artistConfidence:a.confidence,channelType:classifyChannel(v.channelTitle)};
     });
     if(!TRV.length)throw new Error('제외 키워드 적용 후 남은 영상이 없습니다.');
     applyAndSaveTrendSnapshots(TRV);
     buildTrendAggregates();
-    TRMETA={days,regions,queries,orders,searchCalls,after,format,category,generated:new Date().toISOString()};
+    TRMETA={days,regions,queries,orders,searchCalls,after,format,category,rateFloor:rateFloor(),generated:new Date().toISOString()};
     renderTrendReport('speed');
     $('trReport').style.display='block';$('trExport').style.display='block';
     $('trReport').scrollIntoView({behavior:'smooth'});
@@ -449,83 +482,160 @@ async function runTrend(){
 function buildTrendAggregates(){
   const cm=new Map(),am=new Map();
   for(const v of TRV){
-    if(!cm.has(v.channelId))cm.set(v.channelId,{id:v.channelId,name:v.channelTitle,type:v.channelType,subs:v.subs,videos:[],views:0});
-    const c=cm.get(v.channelId);c.videos.push(v);c.views+=v.views;
+    if(!cm.has(v.channelId))cm.set(v.channelId,{id:v.channelId,name:v.channelTitle,type:v.channelType,subs:v.subs,videos:[],views:0,likes:0,comments:0});
+    const c=cm.get(v.channelId);c.videos.push(v);c.views+=v.views;c.likes+=v.likes;c.comments+=v.comments;
     const ak=v.artist.toLowerCase();
-    if(!am.has(ak))am.set(ak,{name:v.artist,confidence:new Set(),videos:[],views:0,channels:new Set()});
-    const a=am.get(ak);a.confidence.add(v.artistConfidence);a.videos.push(v);a.views+=v.views;a.channels.add(v.channelTitle);
+    if(!am.has(ak))am.set(ak,{name:v.artist,confidence:new Set(),videos:[],views:0,likes:0,comments:0,channels:new Set()});
+    const a=am.get(ak);a.confidence.add(v.artistConfidence);a.videos.push(v);a.views+=v.views;a.likes+=v.likes;a.comments+=v.comments;a.channels.add(v.channelTitle);
   }
   TRC=[...cm.values()].map(c=>{
     const speeds=c.videos.map(v=>v.vph),breaks=c.videos.map(v=>v.subBreak).filter(Boolean);
-    return{...c,count:c.videos.length,medianVph:median(speeds),maxVph:Math.max(...speeds),medianBreak:median(breaks),best:[...c.videos].sort((a,b)=>b.vph-a.vph)[0]};
+    const likeRates=c.videos.map(v=>v.likeRate).filter(Number.isFinite),commentRates=c.videos.map(v=>v.commentRate).filter(Number.isFinite),engages=c.videos.map(v=>v.engage).filter(Number.isFinite);
+    return{...c,count:c.videos.length,medianVph:median(speeds),maxVph:Math.max(...speeds),medianBreak:median(breaks),
+      likeRate:pct(c.likes,c.views),commentRate:pct(c.comments,c.views),engage:pct(c.likes+c.comments,c.views),
+      medianLikeRate:median(likeRates),medianCommentRate:median(commentRates),medianEngage:median(engages),
+      responseBreak:c.subs?pct(c.likes+c.comments,c.subs):0,
+      best:[...c.videos].sort((a,b)=>b.vph-a.vph)[0],bestEngage:sortRateForList(c.videos,'engage')[0]};
   }).sort((a,b)=>b.views-a.views);
   TRA=[...am.values()].map(a=>{
     const speeds=a.videos.map(v=>v.vph),breaks=a.videos.map(v=>v.subBreak).filter(Boolean);
-    return{...a,count:a.videos.length,channelCount:a.channels.size,medianVph:median(speeds),maxVph:Math.max(...speeds),medianBreak:median(breaks),confidence:[...a.confidence].join('/'),best:[...a.videos].sort((x,y)=>y.vph-x.vph)[0]};
+    const likeRates=a.videos.map(v=>v.likeRate).filter(Number.isFinite),commentRates=a.videos.map(v=>v.commentRate).filter(Number.isFinite),engages=a.videos.map(v=>v.engage).filter(Number.isFinite);
+    return{...a,count:a.videos.length,channelCount:a.channels.size,medianVph:median(speeds),maxVph:Math.max(...speeds),medianBreak:median(breaks),
+      likeRate:pct(a.likes,a.views),commentRate:pct(a.comments,a.views),engage:pct(a.likes+a.comments,a.views),
+      medianLikeRate:median(likeRates),medianCommentRate:median(commentRates),medianEngage:median(engages),
+      confidence:[...a.confidence].join('/'),best:[...a.videos].sort((x,y)=>y.vph-x.vph)[0],bestEngage:sortRateForList(a.videos,'engage')[0]};
   }).filter(a=>a.name&&a.name.length>=2).sort((a,b)=>b.views-a.views);
 }
+function sortRateForList(list,key){
+  const floor=rateFloor();
+  return [...list].sort((a,b)=>(b.views>=floor?1:0)-(a.views>=floor?1:0)||metricNum(b,key)-metricNum(a,key)||b.views-a.views);
+}
+function trendSorted(metric='speed'){
+  if(metric==='views')return [...TRV].sort((a,b)=>b.views-a.views);
+  if(metric==='break')return [...TRV].sort((a,b)=>b.subBreak-a.subBreak);
+  if(metric==='delta')return [...TRV].sort((a,b)=>metricNum(b,'measuredVph')-metricNum(a,'measuredVph'));
+  if(metric==='likespeed')return [...TRV].sort((a,b)=>(metricNum(b,'measuredLph')>=0?metricNum(b,'measuredLph'):b.lph)-(metricNum(a,'measuredLph')>=0?metricNum(a,'measuredLph'):a.lph));
+  if(metric==='likerate')return sortRate('likeRate');
+  if(metric==='commentrate')return sortRate('commentRate');
+  if(metric==='engage')return sortRate('engage');
+  return [...TRV].sort((a,b)=>b.vph-a.vph);
+}
+function buildTrendSignals(){
+  const out=[],seen=new Set(),floor=rateFloor();
+  const meta=v=>'조회 '+fmt(v.views)+' · '+fmt(Math.round(v.vph))+'/h · 좋아요 '+fmt(v.likes)+' ('+(Number.isFinite(v.likeRate)?v.likeRate.toFixed(2):'-')+'%) · 댓글 '+fmt(v.comments)+' ('+(Number.isFinite(v.commentRate)?v.commentRate.toFixed(3):'-')+'%) · 총반응 '+(Number.isFinite(v.engage)?v.engage.toFixed(2):'-')+'%';
+  const addVideo=(tag,v,why,action)=>{
+    if(!v||seen.has('v:'+v.id)||out.length>=20)return false;
+    seen.add('v:'+v.id);out.push({tag,title:v.title,link:'https://www.youtube.com/watch?v='+v.id,meta:meta(v),why,action});return true;
+  };
+  const addChannel=(tag,c,why,action)=>{
+    if(!c||seen.has('c:'+c.id)||out.length>=20)return false;
+    seen.add('c:'+c.id);out.push({tag,title:c.name,link:'https://www.youtube.com/channel/'+c.id,meta:'후보 '+c.count+'편 · 합산 조회 '+fmt(c.views)+' · 좋아요율 '+c.likeRate.toFixed(2)+'% · 댓글률 '+c.commentRate.toFixed(3)+'% · 총반응 '+c.engage.toFixed(2)+'%',why,action});return true;
+  };
+  const addArtist=(tag,a,why,action)=>{
+    if(!a||seen.has('a:'+a.name.toLowerCase())||out.length>=20)return false;
+    seen.add('a:'+a.name.toLowerCase());out.push({tag,title:a.name,link:'',meta:'영상 '+a.count+'편 · '+a.channelCount+'개 채널 · 합산 조회 '+fmt(a.views)+' · 좋아요율 '+a.likeRate.toFixed(2)+'% · 총반응 '+a.engage.toFixed(2)+'%',why,action});return true;
+  };
+  const take=(arr,n,adder)=>{let k=0;for(const x of arr){if(adder(x))k++;if(k>=n||out.length>=20)break;}};
+
+  take(trendSorted('delta').filter(v=>v.measuredVph!=null),2,v=>addVideo('실측 급상승',v,'직전 조사 이후 실제 조회 증가 속도가 빠릅니다.','현재 화제의 원인을 썸네일·업로드 시각·외부 이슈까지 즉시 확인할 대상입니다.'));
+  take(trendSorted('speed'),3,v=>addVideo('조회 확산',v,'업로드 후 경과시간 대비 조회 유입이 빠릅니다.','대중 도달형 포맷·출연자·제목 설계를 벤치마크하세요.'));
+  take(trendSorted('likespeed'),3,v=>addVideo('좋아요 증가',v,v.measuredLph!=null?'직전 조사 이후 좋아요가 시간당 '+fmt(Math.round(v.measuredLph))+'개씩 증가 중입니다.':'업로드 이후 좋아요 누적 속도가 빠릅니다.','팬덤이 단순 시청을 넘어 적극 반응하는 이유를 확인하세요.'));
+  take(trendSorted('likerate').filter(v=>v.views>=floor),3,v=>addVideo('팬덤 결집',v,'최소 조회수 기준을 충족하면서 좋아요율이 높습니다.','코어 팬덤 캐스팅·멤버 집중 콘텐츠·굿즈 연계 후보로 검토하세요.'));
+  take(trendSorted('commentrate').filter(v=>v.views>=floor),2,v=>addVideo('댓글 화제성',v,'조회수 대비 댓글 참여가 이례적으로 많습니다.','질문형 고정댓글·팬 참여 미션·밈 확장에 적합한지 확인하세요.'));
+  take(trendSorted('engage').filter(v=>v.views>=floor),2,v=>addVideo('종합 반응',v,'좋아요와 댓글을 합친 총반응률이 높습니다.','조회 도달과 팬덤 반응을 함께 확보한 포맷이면 후속편 우선순위를 높이세요.'));
+  take(trendSorted('break').filter(v=>v.subs>0),2,v=>addVideo('체급 돌파',v,'채널 구독자 규모를 넘어 조회와 반응이 발생했습니다.','신인·중소 채널의 돌파 요인을 분석하고 선제 섭외 여부를 판단하세요.'));
+  take([...TRV].sort((a,b)=>b.sourceCount-a.sourceCount||b.views-a.views),1,v=>addVideo('반복 포착',v,'여러 시장·검색어·정렬 결과에서 반복 포착됐습니다.','일시적 단일 검색 노출보다 광범위한 확산 가능성을 우선 점검하세요.'));
+
+  const channelEng=[...TRC].sort((a,b)=>(b.views>=floor?1:0)-(a.views>=floor?1:0)||b.engage-a.engage);
+  take(channelEng,1,c=>addChannel('반응 채널',c,'후보 영상들의 합산 반응률이 강한 채널입니다.','채널의 편성 패턴과 출연자 반복성을 분석해 벤치마크·협업 후보로 분류하세요.'));
+  const artistCross=[...TRA].sort((a,b)=>b.channelCount-a.channelCount||b.engage-a.engage||b.views-a.views);
+  take(artistCross,1,a=>addArtist('다채널 확산',a,'복수 채널에서 반복적으로 포착된 아티스트 후보입니다.','특정 공식 채널에만 의존하지 않는 확산인지 확인하고 캐스팅 조사 우선순위를 높이세요.'));
+
+  // 스냅샷이 없는 첫 실행 등으로 20개가 덜 찬 경우, 중복되지 않은 종합 후보로 채움
+  const fallback=[...TRV].sort((a,b)=>(b.vph*(1+(b.engage||0)/10))-(a.vph*(1+(a.engage||0)/10)));
+  for(const v of fallback){
+    if(out.length>=20)break;
+    addVideo('추가 주목',v,'조회 속도와 팬덤 반응을 함께 고려한 종합 후보입니다.','원본을 열어 아티스트명 추정과 실제 콘텐츠 맥락을 확인하세요.');
+  }
+  return out.slice(0,20);
+}
 function renderTrendReport(metric='speed'){
-  const sorted=metric==='views'?[...TRV].sort((a,b)=>b.views-a.views):metric==='break'?[...TRV].sort((a,b)=>b.subBreak-a.subBreak):metric==='delta'?[...TRV].sort((a,b)=>(b.measuredVph??-1)-(a.measuredVph??-1)):[...TRV].sort((a,b)=>b.vph-a.vph);
-  const medVph=median(TRV.map(v=>v.vph)),total=TRV.reduce((s,v)=>s+v.views,0),fresh=TRV.filter(v=>v.hours<=24).length,snapN=TRV.filter(v=>v.measuredVph!=null).length;
+  const sorted=trendSorted(metric);
+  const medVph=median(TRV.map(v=>v.vph)),total=TRV.reduce((s,v)=>s+v.views,0),totalLikes=TRV.reduce((s,v)=>s+v.likes,0),totalComments=TRV.reduce((s,v)=>s+v.comments,0);
+  const fresh=TRV.filter(v=>v.hours<=24).length,snapN=TRV.filter(v=>v.measuredVph!=null).length,likeSnapN=TRV.filter(v=>v.measuredLph!=null).length;
+  const medLikeRate=median(TRV.map(v=>v.likeRate).filter(Number.isFinite)),medCommentRate=median(TRV.map(v=>v.commentRate).filter(Number.isFinite)),medEngage=median(TRV.map(v=>v.engage).filter(Number.isFinite));
   const titleKw={};for(const v of TRV){for(const w of new Set(tokenize(v.title).filter(x=>!TREND_STOP.has(x))))titleKw[w]=(titleKw[w]||{n:0,views:0}),titleKw[w].n++,titleKw[w].views+=v.views;}
   const kws=Object.entries(titleKw).filter(([,o])=>o.n>=2).sort((a,b)=>b[1].views-a[1].views).slice(0,15);
   const topArtist=[...TRA].sort((a,b)=>b.views-a.views).slice(0,15),topChannel=[...TRC].sort((a,b)=>b.views-a.views).slice(0,15);
-  let h='<div class="rephead"><h2>K-POP 트렌드 레이더</h2><div class="sub">최근 '+TRMETA.days+'일 · 시장 '+TRMETA.regions.join('/')+' · 검색 호출 '+TRMETA.searchCalls+'회 · 후보 영상 '+TRV.length+'개 · 생성 '+new Date(TRMETA.generated).toLocaleString('ko-KR')+'</div></div>';
-  h+='<div class="kpi"><div><b>'+fmt(TRV.length)+'</b><span>분석 영상</span></div><div><b>'+fmt(total)+'</b><span>후보 합산 조회수</span></div><div><b>'+fmt(Math.round(medVph))+'</b><span>시간당 조회수 중앙값</span></div><div><b>'+fmt(fresh)+'</b><span>24시간 내 업로드</span></div><div><b>'+fmt(TRC.length)+' / '+fmt(TRA.length)+'</b><span>채널 / 아티스트 후보</span></div><div><b>'+fmt(snapN)+'</b><span>직전 실행과 비교 가능</span></div></div>';
-  h+='<h3 class="sec">PD용 해석</h3>';
+  const eligible=TRV.filter(rateEligible),rateNote='최소 조회수 '+fmt(rateFloor())+'회 이상 우선';
+  let h='<div class="rephead"><h2>K-POP 트렌드 레이더</h2><div class="sub">최근 '+TRMETA.days+'일 · 시장 '+TRMETA.regions.join('/')+' · 검색 호출 '+TRMETA.searchCalls+'회 · 후보 영상 '+TRV.length+'개 · '+rateNote+' · 생성 '+new Date(TRMETA.generated).toLocaleString('ko-KR')+'</div></div>';
+  h+='<div class="kpi"><div><b>'+fmt(TRV.length)+'</b><span>분석 영상</span></div><div><b>'+fmt(total)+'</b><span>후보 합산 조회수</span></div><div><b>'+fmt(totalLikes)+'</b><span>합산 좋아요</span></div><div><b>'+fmt(totalComments)+'</b><span>합산 댓글</span></div><div><b>'+medLikeRate.toFixed(2)+'%</b><span>좋아요율 중앙값</span></div><div><b>'+medCommentRate.toFixed(3)+'%</b><span>댓글률 중앙값</span></div><div><b>'+medEngage.toFixed(2)+'%</b><span>총반응률 중앙값</span></div><div><b>'+fmt(Math.round(medVph))+'</b><span>시간당 조회 중앙값</span></div><div><b>'+fmt(snapN)+' / '+fmt(likeSnapN)+'</b><span>조회 / 좋아요 실측 비교</span></div></div>';
+  h+='<h3 class="sec">PD용 트렌드 해석</h3>';
   const speed1=[...TRV].sort((a,b)=>b.vph-a.vph)[0],break1=[...TRV].filter(v=>v.subs>0).sort((a,b)=>b.subBreak-a.subBreak)[0];
-  if(speed1)h+='<div class="insight">지금 가장 빠른 영상은 <b>「'+esc(speed1.title.slice(0,70))+'」</b> — 시간당 약 '+fmt(Math.round(speed1.vph))+'회. 총조회수보다 현재 확산 속도를 볼 때 우선 확인할 대상입니다.</div>';
-  if(topChannel[0])h+='<div class="insight">최근 후보군 합산 조회수 1위 채널은 <b>'+esc(topChannel[0].name)+'</b> — '+topChannel[0].count+'개 영상에서 '+fmt(topChannel[0].views)+'회. 반복 노출되는 편성·포맷을 확인하세요.</div>';
-  if(topArtist[0])h+='<div class="insight">자동 추정 아티스트 후보 1위는 <b>'+esc(topArtist[0].name)+'</b> — '+topArtist[0].count+'개 영상, 합산 '+fmt(topArtist[0].views)+'회. 제목 추정값은 반드시 원본 확인이 필요합니다.</div>';
-  if(break1)h+='<div class="insight">채널 구독자 체급 대비 돌파 1위 영상은 <b>「'+esc(break1.title.slice(0,55))+'」</b> — 조회수/구독자 '+break1.subBreak.toFixed(1)+'%. 신인·중소 채널 발굴에 특히 유용한 지표입니다.</div>';
-  if(snapN){const d=[...TRV].filter(v=>v.measuredVph!=null).sort((a,b)=>b.measuredVph-a.measuredVph)[0];if(d)h+='<div class="insight">직전 실행 이후 실측 증가 1위는 <b>「'+esc(d.title.slice(0,55))+'」</b> — '+fmt(d.deltaViews)+'회 증가, 시간당 '+fmt(Math.round(d.measuredVph))+'회. 반복 조사할수록 가장 신뢰도 높은 추세 지표가 됩니다.</div>';}
-  else h+='<div class="insight">첫 실행이라 실측 증가량은 아직 없습니다. 다음 실행부터 같은 브라우저에 저장된 직전 조회수와 비교해 실제 증가 속도를 표시합니다.</div>';
-  h+='<div class="metric-tabs"><button class="'+(metric==='delta'?'on':'')+'" onclick="renderTrendReport(\'delta\')">직전 실행 대비</button><button class="'+(metric==='speed'?'on':'')+'" onclick="renderTrendReport(\'speed\')">업로드 후 속도순</button><button class="'+(metric==='views'?'on':'')+'" onclick="renderTrendReport(\'views\')">누적 조회수순</button><button class="'+(metric==='break'?'on':'')+'" onclick="renderTrendReport(\'break\')">체급 돌파순</button></div>';
+  const like1=sortRate('likeRate').find(rateEligible),comment1=sortRate('commentRate').find(rateEligible),engage1=sortRate('engage').find(rateEligible);
+  if(speed1)h+='<div class="insight">조회 확산 속도 1위는 <b>「'+esc(speed1.title.slice(0,70))+'」</b> — 시간당 약 '+fmt(Math.round(speed1.vph))+'회. 대중 도달력이 빠른 소재·채널·포맷인지 우선 확인하세요.</div>';
+  if(like1)h+='<div class="insight">팬덤 호감 밀도 1위는 <b>「'+esc(like1.title.slice(0,65))+'」</b> — 좋아요 '+fmt(like1.likes)+'개, 좋아요율 '+like1.likeRate.toFixed(2)+'% ('+rateNote+'). 조회수 규모보다 코어 팬 결집력이 강한 후보입니다.</div>';
+  if(comment1)h+='<div class="insight">대화·참여 밀도 1위는 <b>「'+esc(comment1.title.slice(0,65))+'」</b> — 댓글 '+fmt(comment1.comments)+'개, 댓글률 '+comment1.commentRate.toFixed(3)+'%. 팬덤 토론·밈·참여형 기획으로 확장할 가치가 있습니다.</div>';
+  if(engage1)h+='<div class="insight">총반응률 1위는 <b>「'+esc(engage1.title.slice(0,65))+'」</b> — 좋아요+댓글 기준 '+engage1.engage.toFixed(2)+'%. 조회수와 반응률이 함께 높다면 캐스팅·후속편 우선순위를 높게 볼 수 있습니다.</div>';
+  if(topChannel[0])h+='<div class="insight">최근 후보군 합산 조회수 1위 채널은 <b>'+esc(topChannel[0].name)+'</b> — '+topChannel[0].count+'개 영상에서 '+fmt(topChannel[0].views)+'회, 좋아요율 '+topChannel[0].likeRate.toFixed(2)+'%. 반복 노출뿐 아니라 반응 밀도도 함께 비교하세요.</div>';
+  if(topArtist[0])h+='<div class="insight">자동 추정 아티스트 후보 1위는 <b>'+esc(topArtist[0].name)+'</b> — '+topArtist[0].count+'개 영상, 합산 '+fmt(topArtist[0].views)+'회, 총반응률 '+topArtist[0].engage.toFixed(2)+'%. 제목 추정값은 반드시 원본 확인이 필요합니다.</div>';
+  if(break1)h+='<div class="insight">채널 구독자 체급 대비 조회 돌파 1위는 <b>「'+esc(break1.title.slice(0,55))+'」</b> — 조회수/구독자 '+break1.subBreak.toFixed(1)+'%, 반응/구독자 '+break1.responseBreak.toFixed(2)+'%. 신인·중소 채널 발굴에 특히 유용합니다.</div>';
+  if(snapN){const d=trendSorted('delta').find(v=>v.measuredVph!=null);if(d)h+='<div class="insight">직전 실행 이후 실측 조회 증가 1위는 <b>「'+esc(d.title.slice(0,55))+'」</b> — '+fmt(d.deltaViews)+'회 증가, 시간당 '+fmt(Math.round(d.measuredVph))+'회.</div>';}
+  if(likeSnapN){const d=[...TRV].filter(v=>v.measuredLph!=null).sort((a,b)=>b.measuredLph-a.measuredLph)[0];if(d)h+='<div class="insight">직전 실행 이후 실측 좋아요 증가 1위는 <b>「'+esc(d.title.slice(0,55))+'」</b> — 좋아요 '+fmt(d.deltaLikes)+'개 증가, 시간당 '+fmt(Math.round(d.measuredLph))+'개. 조회 증가보다 좋아요 증가가 강하면 팬덤 결집형 확산일 가능성이 큽니다.</div>';}
+  if(!snapN&&!likeSnapN)h+='<div class="insight">첫 실행이라 실측 증가량은 아직 없습니다. 다음 실행부터 같은 브라우저에 저장된 조회수·좋아요·댓글과 비교해 실제 증가 속도를 표시합니다.</div>';
+  const signals=buildTrendSignals();
+  h+='<h3 class="sec">오늘의 특이사항 '+signals.length+'가지 — 조회·좋아요·댓글 종합</h3><ol class="trend-signals">';
+  for(const x of signals){const title=x.link?'<a class="link" target="_blank" rel="noopener" href="'+x.link+'">'+esc(x.title)+'</a>':esc(x.title);h+='<li><div class="signal-title"><span class="signal-tag">'+esc(x.tag)+'</span>'+title+'</div><div class="signal-meta">'+x.meta+'</div><div class="signal-action"><b>해석:</b> '+esc(x.why)+' <b>PD 시사점:</b> '+esc(x.action)+'</div></li>';}
+  h+='</ol>';
+  h+='<div class="metric-tabs"><button class="'+(metric==='delta'?'on':'')+'" onclick="renderTrendReport(\'delta\')">실측 조회 증가</button><button class="'+(metric==='speed'?'on':'')+'" onclick="renderTrendReport(\'speed\')">조회 속도</button><button class="'+(metric==='likespeed'?'on':'')+'" onclick="renderTrendReport(\'likespeed\')">좋아요 속도</button><button class="'+(metric==='likerate'?'on':'')+'" onclick="renderTrendReport(\'likerate\')">좋아요율</button><button class="'+(metric==='commentrate'?'on':'')+'" onclick="renderTrendReport(\'commentrate\')">댓글률</button><button class="'+(metric==='engage'?'on':'')+'" onclick="renderTrendReport(\'engage\')">총반응률</button><button class="'+(metric==='views'?'on':'')+'" onclick="renderTrendReport(\'views\')">누적 조회수</button><button class="'+(metric==='break'?'on':'')+'" onclick="renderTrendReport(\'break\')">체급 돌파</button></div>';
   h+='<h3 class="sec">최근 영상 TOP 30</h3>'+trendVideoTable(sorted.slice(0,30),metric);
-  h+='<div class="grid2"><div><h3 class="sec">조회수를 만든 채널 TOP 15</h3>'+trendChannelTable(topChannel)+'</div><div><h3 class="sec">아티스트 후보 TOP 15</h3>'+trendArtistTable(topArtist)+'</div></div>';
+  h+='<div class="grid2"><div><h3 class="sec">조회 규모 채널 TOP 15</h3>'+trendChannelTable(topChannel)+'</div><div><h3 class="sec">조회 규모 아티스트 후보 TOP 15</h3>'+trendArtistTable(topArtist)+'</div></div>';
+  const reactionChannels=[...TRC].sort((a,b)=>(b.views>=rateFloor()?1:0)-(a.views>=rateFloor()?1:0)||b.engage-a.engage||b.views-a.views).slice(0,10);
+  const reactionArtists=[...TRA].sort((a,b)=>(b.views>=rateFloor()?1:0)-(a.views>=rateFloor()?1:0)||b.engage-a.engage||b.views-a.views).slice(0,10);
+  h+='<div class="grid2"><div><h3 class="sec">팬덤 반응 채널 TOP 10</h3>'+trendChannelTable(reactionChannels)+'</div><div><h3 class="sec">팬덤 반응 아티스트 후보 TOP 10</h3>'+trendArtistTable(reactionArtists)+'</div></div>';
   if(kws.length){const max=kws[0][1].views;h+='<h3 class="sec">조회수 가중 제목 키워드</h3>';for(const[w,o]of kws)h+=kwline(w+' ('+o.n+'편)',o.views,max,true);}
-  h+='<div class="warn">이 결과는 YouTube 검색 후보군의 상대 비교이며 YouTube 전체 K-POP 영상의 완전한 전수 집계가 아닙니다. 직전 실행 비교 기록은 현재 브라우저에만 저장되며 브라우저 데이터 삭제 시 사라집니다. 시장 선택은 해당 국가에서 시청 가능한 검색 결과 표본을 뜻하며 채널 국적을 의미하지 않습니다.</div>';
+  h+='<div class="warn">이 결과는 YouTube 검색 후보군의 상대 비교이며 전체 K-POP 영상 전수 집계가 아닙니다. 좋아요순·댓글순으로 직접 검색할 수 없으므로 조회수·최신순으로 수집된 후보 안에서 반응 지표를 재정렬합니다. 반응률은 작은 영상에서 과대평가될 수 있어 최소 조회수 기준을 함께 확인하세요. 직전 실행 비교 기록은 현재 브라우저에만 저장됩니다.</div>';
   $('trReport').innerHTML=h;
 }
 function analyzeDiscoveredVideo(id){$('vidInput').value='https://www.youtube.com/watch?v='+id;switchTab(2);$('vidInput').focus();}
 function trendVideoTable(rows,metric){
-  let t='<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>영상 / 아티스트 후보</th><th>채널</th><th class="num">조회수</th><th class="num">업로드후/h</th><th class="num">실측증가/h</th><th class="num">체급돌파</th><th class="num">반응률</th><th>업로드</th></tr></thead><tbody>';
-  rows.forEach((v,i)=>{const main=metric==='views'?v.views:metric==='break'?v.subBreak:v.vph;t+='<tr><td class="rankno">'+(i+1)+'</td><td class="vtitle"><a class="link" target="_blank" rel="noopener" href="https://www.youtube.com/watch?v='+v.id+'">'+esc(v.title)+'</a><div class="note">'+esc(v.artist)+' <span class="conf">('+esc(v.artistConfidence)+')</span> · '+(formatShort(v)?'<span class="badge shorts">4분 미만</span>':formatDuration(v.dur))+' · 후보검색 '+v.sourceCount+'회 포착 · <a class="smalllink" href="#" onclick="analyzeDiscoveredVideo(\''+v.id+'\');return false">댓글 분석</a></div></td><td><a class="smalllink" target="_blank" rel="noopener" href="https://www.youtube.com/channel/'+v.channelId+'">'+esc(v.channelTitle)+'</a><div class="note">구독 '+(v.hiddenSubs?'비공개':fmt(v.subs))+'</div></td><td class="num">'+fmt(v.views)+'</td><td class="num"><b>'+fmt(Math.round(v.vph))+'</b></td><td class="num">'+(v.measuredVph==null?'-':fmt(Math.round(v.measuredVph)))+'</td><td class="num">'+(v.subs?v.subBreak.toFixed(1)+'%':'-')+'</td><td class="num">'+v.engage.toFixed(2)+'%</td><td style="font-family:var(--mono);font-size:11px">'+v.published.slice(0,10)+'<br>'+Math.round(v.hours)+'h 전</td></tr>';});
+  let t='<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>영상 / 아티스트 후보</th><th>채널</th><th class="num">조회수</th><th class="num">조회/h</th><th class="num">실측조회/h</th><th class="num">좋아요</th><th class="num">좋아요율</th><th class="num">실측♥/h</th><th class="num">댓글</th><th class="num">댓글률</th><th class="num">총반응률</th><th class="num">체급돌파</th><th>업로드</th></tr></thead><tbody>';
+  rows.forEach((v,i)=>{const eligible=rateEligible(v);t+='<tr><td class="rankno">'+(i+1)+'</td><td class="vtitle"><a class="link" target="_blank" rel="noopener" href="https://www.youtube.com/watch?v='+v.id+'">'+esc(v.title)+'</a><div class="note">'+esc(v.artist)+' <span class="conf">('+esc(v.artistConfidence)+')</span> · '+(formatShort(v)?'<span class="badge shorts">4분 미만</span>':formatDuration(v.dur))+' · 후보검색 '+v.sourceCount+'회 포착 · '+(eligible?'<span class="pill">반응률 표본 충족</span>':'<span class="conf">반응률 소표본</span>')+' · <a class="smalllink" href="#" onclick="analyzeDiscoveredVideo(\''+v.id+'\');return false">댓글 분석</a></div></td><td><a class="smalllink" target="_blank" rel="noopener" href="https://www.youtube.com/channel/'+v.channelId+'">'+esc(v.channelTitle)+'</a><div class="note">구독 '+(v.hiddenSubs?'비공개':fmt(v.subs))+'</div></td><td class="num">'+fmt(v.views)+'</td><td class="num"><b>'+fmt(Math.round(v.vph))+'</b></td><td class="num">'+(v.measuredVph==null?'-':fmt(Math.round(v.measuredVph)))+'</td><td class="num">'+(v.likesAvailable?fmt(v.likes):'-')+'</td><td class="num">'+(Number.isFinite(v.likeRate)?v.likeRate.toFixed(2)+'%':'-')+'</td><td class="num">'+(v.measuredLph==null?'-':fmt(Math.round(v.measuredLph)))+'</td><td class="num">'+(v.commentsAvailable?fmt(v.comments):'-')+'</td><td class="num">'+(Number.isFinite(v.commentRate)?v.commentRate.toFixed(3)+'%':'-')+'</td><td class="num"><b>'+(Number.isFinite(v.engage)?v.engage.toFixed(2)+'%':'-')+'</b></td><td class="num">'+(v.subs?v.subBreak.toFixed(1)+'%':'-')+'<div class="conf">반응 '+(v.subs?v.responseBreak.toFixed(2)+'%':'-')+'</div></td><td style="font-family:var(--mono);font-size:11px">'+v.published.slice(0,10)+'<br>'+Math.round(v.hours)+'h 전</td></tr>';});
   return t+'</tbody></table></div>';
 }
 function trendChannelTable(rows){
-  let t='<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>채널</th><th class="num">후보</th><th class="num">합산 조회</th><th class="num">중앙 속도</th></tr></thead><tbody>';
-  rows.forEach((c,i)=>t+='<tr><td class="rankno">'+(i+1)+'</td><td><a class="link" target="_blank" rel="noopener" href="https://www.youtube.com/channel/'+c.id+'">'+esc(c.name)+'</a><div class="note">'+esc(c.type)+' · 구독 '+fmt(c.subs)+' · <a class="smalllink" href="#" onclick="analyzeDiscoveredChannel(\''+c.id+'\');return false">이 도구에서 분석</a></div></td><td class="num">'+c.count+'</td><td class="num">'+fmt(c.views)+'</td><td class="num">'+fmt(Math.round(c.medianVph))+'/h</td></tr>');
+  let t='<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>채널</th><th class="num">후보</th><th class="num">합산 조회</th><th class="num">좋아요율</th><th class="num">댓글률</th><th class="num">총반응률</th><th class="num">중앙 조회/h</th></tr></thead><tbody>';
+  rows.forEach((c,i)=>t+='<tr><td class="rankno">'+(i+1)+'</td><td><a class="link" target="_blank" rel="noopener" href="https://www.youtube.com/channel/'+c.id+'">'+esc(c.name)+'</a><div class="note">'+esc(c.type)+' · 구독 '+fmt(c.subs)+' · 반응/구독 '+c.responseBreak.toFixed(2)+'% · <a class="smalllink" href="#" onclick="analyzeDiscoveredChannel(\''+c.id+'\');return false">이 도구에서 분석</a></div></td><td class="num">'+c.count+'</td><td class="num">'+fmt(c.views)+'</td><td class="num">'+c.likeRate.toFixed(2)+'%</td><td class="num">'+c.commentRate.toFixed(3)+'%</td><td class="num"><b>'+c.engage.toFixed(2)+'%</b></td><td class="num">'+fmt(Math.round(c.medianVph))+'/h</td></tr>');
   return t+'</tbody></table></div>';
 }
 function trendArtistTable(rows){
-  let t='<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>아티스트 후보</th><th class="num">영상</th><th class="num">합산 조회</th><th class="num">중앙 속도</th></tr></thead><tbody>';
-  rows.forEach((a,i)=>t+='<tr><td class="rankno">'+(i+1)+'</td><td>'+esc(a.name)+'<div class="note">'+esc(a.confidence)+' · '+a.channelCount+'개 채널 포착</div></td><td class="num">'+a.count+'</td><td class="num">'+fmt(a.views)+'</td><td class="num">'+fmt(Math.round(a.medianVph))+'/h</td></tr>');
+  let t='<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>아티스트 후보</th><th class="num">영상</th><th class="num">합산 조회</th><th class="num">좋아요</th><th class="num">좋아요율</th><th class="num">댓글률</th><th class="num">총반응률</th></tr></thead><tbody>';
+  rows.forEach((a,i)=>t+='<tr><td class="rankno">'+(i+1)+'</td><td>'+esc(a.name)+'<div class="note">'+esc(a.confidence)+' · '+a.channelCount+'개 채널 포착 · 중앙 조회 '+fmt(Math.round(a.medianVph))+'/h</div></td><td class="num">'+a.count+'</td><td class="num">'+fmt(a.views)+'</td><td class="num">'+fmt(a.likes)+'</td><td class="num">'+a.likeRate.toFixed(2)+'%</td><td class="num">'+a.commentRate.toFixed(3)+'%</td><td class="num"><b>'+a.engage.toFixed(2)+'%</b></td></tr>');
   return t+'</tbody></table></div>';
 }
 function trendCSV(kind){
   if(kind==='videos'){
-    const rows=[['영상ID','제목','아티스트후보','추정근거','채널','채널유형','업로드','길이초','조회수','업로드후시간당조회','직전실행대비증가','직전실행대비시간당조회','일평균조회','좋아요','댓글','반응률%','구독자','조회수/구독자%','검색포착수']];
-    [...TRV].sort((a,b)=>b.vph-a.vph).forEach(v=>rows.push([v.id,v.title,v.artist,v.artistConfidence,v.channelTitle,v.channelType,v.published,v.dur,v.views,Math.round(v.vph),v.deltaViews??'',v.measuredVph==null?'':Math.round(v.measuredVph),Math.round(v.vpd),v.likes,v.comments,v.engage.toFixed(2),v.subs,v.subBreak.toFixed(2),v.sourceCount]));
+    const rows=[['영상ID','제목','아티스트후보','추정근거','채널','채널유형','업로드','길이초','조회수','업로드후시간당조회','직전실행조회증가','직전실행시간당조회','좋아요','좋아요율%','업로드후시간당좋아요','직전실행좋아요증가','직전실행시간당좋아요','댓글','댓글률%','업로드후시간당댓글','직전실행댓글증가','직전실행시간당댓글','총반응률%','구독자','조회수/구독자%','좋아요/구독자%','반응/구독자%','검색포착수']];
+    [...TRV].sort((a,b)=>b.vph-a.vph).forEach(v=>rows.push([v.id,v.title,v.artist,v.artistConfidence,v.channelTitle,v.channelType,v.published,v.dur,v.views,Math.round(v.vph),v.deltaViews??'',v.measuredVph==null?'':Math.round(v.measuredVph),v.likes,Number.isFinite(v.likeRate)?v.likeRate.toFixed(3):'',Math.round(v.lph),v.deltaLikes??'',v.measuredLph==null?'':v.measuredLph.toFixed(2),v.comments,Number.isFinite(v.commentRate)?v.commentRate.toFixed(4):'',v.cph.toFixed(2),v.deltaComments??'',v.measuredCph==null?'':v.measuredCph.toFixed(2),Number.isFinite(v.engage)?v.engage.toFixed(3):'',v.subs,v.subBreak.toFixed(2),v.likeBreak.toFixed(3),v.responseBreak.toFixed(3),v.sourceCount]));
     dlCSV(rows,'kpop_trend_videos_'+new Date().toISOString().slice(0,10)+'.csv');
   }else if(kind==='channels'){
-    const rows=[['채널ID','채널','유형','구독자','후보영상수','합산조회수','시간당조회중앙값','최고시간당조회','체급돌파중앙값%','최고영상']];
-    TRC.forEach(c=>rows.push([c.id,c.name,c.type,c.subs,c.count,c.views,Math.round(c.medianVph),Math.round(c.maxVph),c.medianBreak.toFixed(2),c.best?.title||'']));
+    const rows=[['채널ID','채널','유형','구독자','후보영상수','합산조회수','합산좋아요','합산댓글','좋아요율%','댓글률%','총반응률%','반응/구독자%','시간당조회중앙값','최고시간당조회','체급돌파중앙값%','최고영상']];
+    TRC.forEach(c=>rows.push([c.id,c.name,c.type,c.subs,c.count,c.views,c.likes,c.comments,c.likeRate.toFixed(3),c.commentRate.toFixed(4),c.engage.toFixed(3),c.responseBreak.toFixed(3),Math.round(c.medianVph),Math.round(c.maxVph),c.medianBreak.toFixed(2),c.best?.title||'']));
     dlCSV(rows,'kpop_trend_channels_'+new Date().toISOString().slice(0,10)+'.csv');
   }else{
-    const rows=[['아티스트후보','추정근거','후보영상수','포착채널수','합산조회수','시간당조회중앙값','최고시간당조회','체급돌파중앙값%','최고영상']];
-    TRA.forEach(a=>rows.push([a.name,a.confidence,a.count,a.channelCount,a.views,Math.round(a.medianVph),Math.round(a.maxVph),a.medianBreak.toFixed(2),a.best?.title||'']));
+    const rows=[['아티스트후보','추정근거','후보영상수','포착채널수','합산조회수','합산좋아요','합산댓글','좋아요율%','댓글률%','총반응률%','시간당조회중앙값','최고시간당조회','체급돌파중앙값%','최고영상']];
+    TRA.forEach(a=>rows.push([a.name,a.confidence,a.count,a.channelCount,a.views,a.likes,a.comments,a.likeRate.toFixed(3),a.commentRate.toFixed(4),a.engage.toFixed(3),Math.round(a.medianVph),Math.round(a.maxVph),a.medianBreak.toFixed(2),a.best?.title||'']));
     dlCSV(rows,'kpop_trend_artists_'+new Date().toISOString().slice(0,10)+'.csv');
   }
 }
 function trendCopy(){
-  const pack={periodDays:TRMETA?.days,markets:TRMETA?.regions,queries:TRMETA?.queries,
-    topVideos:[...TRV].sort((a,b)=>b.vph-a.vph).slice(0,30).map(v=>({title:v.title,artistCandidate:v.artist,channel:v.channelTitle,views:v.views,viewsPerHourSinceUpload:Math.round(v.vph),measuredViewsPerHour:v.measuredVph==null?null:Math.round(v.measuredVph),measuredViewDelta:v.deltaViews,viewToSubscriberPct:+v.subBreak.toFixed(2),engagementPct:+v.engage.toFixed(2),published:v.published})),
-    topChannels:TRC.slice(0,20).map(c=>({channel:c.name,type:c.type,subscribers:c.subs,candidateVideos:c.count,totalViews:c.views,medianViewsPerHour:Math.round(c.medianVph)})),
-    topArtistCandidates:TRA.slice(0,20).map(a=>({artist:a.name,confidence:a.confidence,videos:a.count,channels:a.channelCount,totalViews:a.views,medianViewsPerHour:Math.round(a.medianVph)}))};
-  navigator.clipboard.writeText('다음 최근 K-POP 유튜브 표본을 바탕으로 뜨는 아티스트/채널/포맷을 PD 관점에서 분석해줘. 자동 추정 아티스트명은 오류 가능성을 명시하고, ①즉시 섭외 후보 ②콘텐츠 벤치마크 ③추가 조사 필요 대상을 나눠줘:\n'+JSON.stringify(pack,null,1)).then(()=>{$('trCopyMsg').textContent='복사됨';});
+  const pack={periodDays:TRMETA?.days,markets:TRMETA?.regions,queries:TRMETA?.queries,rateFloor:TRMETA?.rateFloor,
+    topByViewSpeed:trendSorted('speed').slice(0,20).map(v=>({title:v.title,artistCandidate:v.artist,channel:v.channelTitle,views:v.views,viewsPerHour:Math.round(v.vph),likes:v.likes,likeRatePct:+(v.likeRate||0).toFixed(3),comments:v.comments,commentRatePct:+(v.commentRate||0).toFixed(4),engagementPct:+(v.engage||0).toFixed(3),measuredViewDelta:v.deltaViews,measuredLikeDelta:v.deltaLikes,measuredLikesPerHour:v.measuredLph==null?null:+v.measuredLph.toFixed(2),viewToSubscriberPct:+v.subBreak.toFixed(2),responseToSubscriberPct:+v.responseBreak.toFixed(3),published:v.published})),
+    topByLikeRate:trendSorted('likerate').slice(0,15).map(v=>({title:v.title,artistCandidate:v.artist,channel:v.channelTitle,views:v.views,likes:v.likes,likeRatePct:+(v.likeRate||0).toFixed(3),comments:v.comments,commentRatePct:+(v.commentRate||0).toFixed(4),engagementPct:+(v.engage||0).toFixed(3)})),
+    topChannels:TRC.slice(0,20).map(c=>({channel:c.name,type:c.type,subscribers:c.subs,candidateVideos:c.count,totalViews:c.views,totalLikes:c.likes,totalComments:c.comments,likeRatePct:+c.likeRate.toFixed(3),commentRatePct:+c.commentRate.toFixed(4),engagementPct:+c.engage.toFixed(3),responseToSubscriberPct:+c.responseBreak.toFixed(3),medianViewsPerHour:Math.round(c.medianVph)})),
+    topArtistCandidates:TRA.slice(0,20).map(a=>({artist:a.name,confidence:a.confidence,videos:a.count,channels:a.channelCount,totalViews:a.views,totalLikes:a.likes,totalComments:a.comments,likeRatePct:+a.likeRate.toFixed(3),commentRatePct:+a.commentRate.toFixed(4),engagementPct:+a.engage.toFixed(3),medianViewsPerHour:Math.round(a.medianVph)}))};
+  navigator.clipboard.writeText('다음 최근 K-POP 유튜브 표본을 조회수와 팬덤 반응 지표를 함께 사용해 PD 관점에서 분석해줘. 단순 조회수 상위가 아니라 ①대중 도달형 ②좋아요율이 높은 팬덤 결집형 ③댓글률이 높은 참여·화제형 ④구독자 체급을 넘어선 돌파형 ⑤조회·좋아요 증가 속도가 동시에 빠른 진짜 급상승형으로 나누고, 즉시 섭외 후보·콘텐츠 벤치마크·추가 조사 대상을 제안해줘:\n'+JSON.stringify(pack,null,1)).then(()=>{$('trCopyMsg').textContent='복사됨';});
 }
-
 /* ---------- 공용: 언어/감성/토큰 ---------- */
 const STOP=new Set(['그리고','그런데','하지만','정말','진짜','너무','근데','저는','제가','이건','그냥','이렇게','같아요','합니다','해요','있는','있어요','없는','했어요','하는','에서','으로','부터','까지','저도','우리','오늘','영상','댓글','채널','유튜브','제발','그리구','이제','다시','계속','보고','하고','와서','근데요','the','and','for','you','are','this','that','was','with','have','has','not','but','all','can','your','its','from','they','their','will','out','when','what','who','how','why','just','like','was','were','been','him','her','his','she','get','got','one','video','youtube','comment']);
 function detectLang(s){
