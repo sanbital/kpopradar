@@ -189,6 +189,10 @@ textarea{width:100%;padding:9px 11px;margin-top:5px;border:1px solid var(--line)
         <select id="trMode"><option value="views">조회수 TOP 중심</option><option value="date">최신 업로드 중심</option><option value="balanced" selected>조회수+최신 균형</option></select>
       </div>
       <div>
+        <label>검색 호출 예산</label>
+        <select id="trSearchBudget"><option value="20">절약 20회</option><option value="35" selected>권장 35회</option><option value="50">확장 50회</option></select>
+      </div>
+      <div>
         <label>영상 형식</label>
         <select id="trFormat"><option value="all" selected>전체</option><option value="short">4분 미만</option><option value="medium">4~20분</option><option value="long">20분 초과</option></select>
       </div>
@@ -206,7 +210,7 @@ textarea{width:100%;padding:9px 11px;margin-top:5px;border:1px solid var(--line)
       </div>
       <div>
         <label>아티스트·곡 실재 검증</label>
-        <select id="trVerifySongs"><option value="on" selected>사용 — 아티스트 10·곡 12 확인</option><option value="off">미사용 — API 절약</option></select>
+        <select id="trVerifySongs"><option value="on" selected>사용 — 상위 4명·6곡, 7일 캐시</option><option value="off">미사용 — API 절약</option></select>
       </div>
       <div>
         <label>프로모션 의심 영상</label>
@@ -214,7 +218,7 @@ textarea{width:100%;padding:9px 11px;margin-top:5px;border:1px solid var(--line)
       </div>
       <div>
         <label>역주행 원곡 추적</label>
-        <select id="trBackCatalog"><option value="on" selected>사용 — 검증곡 원곡 조회</option><option value="off">미사용 — API 절약</option></select>
+        <select id="trBackCatalog"><option value="on" selected>사용 — 상위 3곡, 24시간 캐시</option><option value="off">미사용 — API 절약</option></select>
       </div>
       <div class="wide">
         <label>추가 검색어 (선택, 줄바꿈 구분)</label>
@@ -231,7 +235,7 @@ textarea{width:100%;padding:9px 11px;margin-top:5px;border:1px solid var(--line)
       </div>
     </div>
     <div class="note" id="trQuotaNote">검색 호출량 계산 중…</div>
-    <div class="warn">국내 검색·한국어 메타데이터를 우선 사용합니다. 곡 추천은 구조화된 제목 추출과 YouTube 실재 검증을 통과한 후보만 제작안에 사용하며, Spotify·Apple Music·멜론·지니·Google 검색 링크를 함께 제공합니다. 조회수에 비해 좋아요·댓글이 동종 영상보다 비정상적으로 낮은 경우는 ‘프로모션/광고 유입 의심’으로 표시하며 기본 추천에서 제외합니다. 이는 확정 판정이 아닌 통계적 의심 신호입니다.</div>
+    <div class="warn">검색 호출 예산을 넘으면 후순위 검색·검증을 자동으로 건너뜁니다. 동일 검색 결과는 브라우저에 6시간~7일 캐시되어 반복 실행 때 API를 다시 소모하지 않습니다. 국내 검색·한국어 메타데이터를 우선 사용하고, 실재 검증을 통과한 후보만 제작안에 우선 사용합니다. 조회수에 비해 좋아요·댓글이 동종 영상보다 비정상적으로 낮은 경우는 ‘프로모션/광고 유입 의심’으로 표시하며 기본 추천에서 제외합니다.</div>
     <button class="primary" onclick="runTrend()" id="trBtn">PD 편성안 생성</button>
     <div class="log" id="trLog"></div>
   </div>
@@ -333,10 +337,12 @@ async function yt(endpoint,params){
   if(!r.ok){
     const e=await r.json().catch(()=>({}));
     const reason=e?.error?.errors?.[0]?.reason||r.status;
-    if(['quotaExceeded','dailyLimitExceeded','rateLimitExceeded'].includes(reason))throw new Error('API 일일 할당량 또는 호출 제한을 초과했습니다.');
+    if(['quotaExceeded','dailyLimitExceeded','rateLimitExceeded','userRateLimitExceeded'].includes(reason)){
+      const err=new Error(reason==='rateLimitExceeded'||reason==='userRateLimitExceeded'?'API 단기 호출 제한에 걸렸습니다. 잠시 뒤 다시 시도하세요.':'API 일일 할당량을 초과했습니다.');err.apiReason=reason;throw err;
+    }
     if(reason==='commentsDisabled')throw new Error('COMMENTS_DISABLED');
-    if(r.status===403)throw new Error('키 오류: YouTube Data API v3 사용 설정과 키 제한을 확인하세요.');
-    throw new Error('API 오류: '+reason);
+    if(r.status===403){const err=new Error('키 오류: YouTube Data API v3 사용 설정과 키 제한을 확인하세요.');err.apiReason=reason;throw err;}
+    const err=new Error('API 오류: '+reason);err.apiReason=reason;throw err;
   }
   return r.json();
 }
@@ -374,9 +380,8 @@ const TREND_PRESETS={
     '퍼포먼스 비디오|안무영상|릴레이댄스|라이브 클립'
   ],
   all:[
-    '한국 아이돌|국내 아이돌|KPOP 아이돌',
-    '아이돌 컴백|아이돌 데뷔|신곡',
-    '뮤직비디오|official MV|performance video',
+    '한국 아이돌|국내 아이돌|아이돌 컴백|아이돌 데뷔',
+    '신곡 뮤직비디오|official MV|performance video',
     '아이돌 직캠|입덕직캠|무대|안무영상'
   ]
 };
@@ -402,11 +407,9 @@ const CHANNEL_SCOPE_PACKS={
     'STUDIO CHOOM|릴레이댄스|퍼포먼스 비디오'
   ],
   wide:[
-    '뮤직뱅크|인기가요|쇼 음악중심|엠카운트다운|더쇼|쇼챔피언',
-    "리무진서비스|it's Live|딩고 라이브|킬링보이스|비긴어게인|복면가왕",
-    '아이돌 인간극장|돌박이일|아이돌 라디오|팅글인터뷰|아이돌 예능',
-    '아이돌 커버|보컬 커버|댄스 커버|팬캠|팬튜브|KPOP creator',
-    '아이돌 쇼츠|KPOP shorts|댄스 챌린지'
+    '뮤직뱅크|인기가요|쇼 음악중심|엠카운트다운|더쇼|쇼챔피언|아이돌 직캠',
+    "리무진서비스|it's Live|딩고 라이브|킬링보이스|비긴어게인|복면가왕|아이돌 커버",
+    '아이돌 인간극장|돌박이일|아이돌 라디오|아이돌 예능|팬캠|팬튜브|아이돌 쇼츠|댄스 챌린지'
   ]
 };
 const COVER_ARCHIVE_QUERIES=[
@@ -424,28 +427,94 @@ let TRV=[],TRPOOL=[],TRC=[],TRA=[],TRMETA=null,TRPD=null,TRSONGS=[],TRFORMATS=[]
 let SOCIAL_SIGNALS=[];
 let SONG_VERIFICATIONS=new Map();
 let ARTIST_VERIFICATIONS=new Map();
+let SEARCH_STATE={budget:35,used:0,cacheHits:0,skipped:[],hardStop:false,phaseUsed:{current:0,archive:0,catalog:0,verify:0}};
+const SEARCH_CACHE_KEY='kpopRadarSearchCacheV3';
+const SEARCH_USAGE_KEY='kpopRadarSearchUsageV3';
+const SEARCH_ROLLING_CAP=85;
+
+function loadJSON(key,fallback){try{return JSON.parse(localStorage.getItem(key)||'')||fallback;}catch{return fallback;}}
+function saveJSON(key,value){try{localStorage.setItem(key,JSON.stringify(value));}catch{}}
+function rollingSearchTimes(){
+  const cutoff=Date.now()-24*3600000;
+  const arr=loadJSON(SEARCH_USAGE_KEY,[]).filter(ts=>Number.isFinite(+ts)&&+ts>=cutoff);
+  saveJSON(SEARCH_USAGE_KEY,arr);return arr;
+}
+function rollingSearchUsage(){return rollingSearchTimes().length;}
+function recordSearchUsage(){const arr=rollingSearchTimes();arr.push(Date.now());saveJSON(SEARCH_USAGE_KEY,arr.slice(-120));}
+function normalizeSearchParams(params){
+  const o={};for(const k of Object.keys(params).sort()){
+    let v=params[k];
+    if(k==='publishedAfter'&&typeof v==='string')v=v.slice(0,13); // 같은 시간대 반복 실행은 캐시 재사용
+    o[k]=v;
+  }return o;
+}
+function searchCacheKey(params){return JSON.stringify(normalizeSearchParams(params));}
+function readSearchCache(params,ttlHours){
+  const cache=loadJSON(SEARCH_CACHE_KEY,{}),key=searchCacheKey(params),hit=cache[key];
+  if(!hit||Date.now()-hit.ts>ttlHours*3600000)return null;
+  return hit.data;
+}
+function writeSearchCache(params,data){
+  const cache=loadJSON(SEARCH_CACHE_KEY,{}),key=searchCacheKey(params);
+  cache[key]={ts:Date.now(),data:{items:data.items||[],nextPageToken:data.nextPageToken||null}};
+  const trimmed=Object.fromEntries(Object.entries(cache).sort((a,b)=>b[1].ts-a[1].ts).slice(0,220));
+  saveJSON(SEARCH_CACHE_KEY,trimmed);
+}
+function resetSearchState(){SEARCH_STATE={budget:selectedSearchBudget(),used:0,cacheHits:0,skipped:[],hardStop:false,phaseUsed:{current:0,archive:0,catalog:0,verify:0}};}
+function phaseLimit(phase){return phaseBudgets(SEARCH_STATE.budget)[phase]??SEARCH_STATE.budget;}
+function canNetworkSearch(phase){
+  return !SEARCH_STATE.hardStop&&SEARCH_STATE.used<SEARCH_STATE.budget&&rollingSearchUsage()<SEARCH_ROLLING_CAP&&SEARCH_STATE.phaseUsed[phase]<phaseLimit(phase);
+}
+async function trendSearch(params,{label='검색',phase='current',ttlHours=6}={}){
+  const cached=readSearchCache(params,ttlHours);
+  if(cached){SEARCH_STATE.cacheHits++;return{...cached,_cache:true};}
+  if(!canNetworkSearch(phase)){
+    SEARCH_STATE.skipped.push(label);return{items:[],_skipped:true};
+  }
+  try{
+    const data=await yt('search',params);
+    SEARCH_STATE.used++;SEARCH_STATE.phaseUsed[phase]=(SEARCH_STATE.phaseUsed[phase]||0)+1;recordSearchUsage();writeSearchCache(params,data);
+    return data;
+  }catch(e){
+    if(e?.apiReason&&['quotaExceeded','dailyLimitExceeded','rateLimitExceeded','userRateLimitExceeded'].includes(e.apiReason)){
+      SEARCH_STATE.hardStop=true;SEARCH_STATE.skipped.push(label);
+      log('trLog','API 제한 감지 — 이미 모은 데이터로 리포트를 계속 생성합니다. 후순위 검색은 중단합니다.');
+      return{items:[],_skipped:true,_error:e.apiReason};
+    }
+    throw e;
+  }
+}
 
 function trendQueries(){
-  const base=[...(TREND_PRESETS[$('trPreset').value]||TREND_PRESETS.all)];
-  const decision=[...(PD_QUERY_PACKS[$('trDecisionMode')?.value||'full']||PD_QUERY_PACKS.full)];
-  const channels=[...(CHANNEL_SCOPE_PACKS[$('trChannelScope')?.value||'wide']||CHANNEL_SCOPE_PACKS.wide)];
+  const groups=[
+    [...(TREND_PRESETS[$('trPreset').value]||TREND_PRESETS.all)],
+    [...(PD_QUERY_PACKS[$('trDecisionMode')?.value||'full']||PD_QUERY_PACKS.full)],
+    [...(CHANNEL_SCOPE_PACKS[$('trChannelScope')?.value||'wide']||CHANNEL_SCOPE_PACKS.wide)]
+  ];
   const custom=$('trCustom').value.split(/\n+/).map(s=>s.trim()).filter(Boolean);
-  return [...new Set([...base,...decision,...channels,...custom])];
+  if(custom.length)groups.push(custom);
+  const out=[];
+  for(let i=0;i<Math.max(...groups.map(g=>g.length),0);i++)for(const g of groups)if(g[i]&&!out.includes(g[i]))out.push(g[i]);
+  return out;
 }
 function trendOrders(){
   const m=$('trMode').value;
   return m==='balanced'?['viewCount','date']:[m==='views'?'viewCount':'date'];
 }
+function selectedSearchBudget(){return +($('trSearchBudget')?.value||35);}
+function phaseBudgets(total=selectedSearchBudget()){
+  if(total<=20)return{current:10,archive:2,catalog:1,verify:7};
+  if(total<=35)return{current:16,archive:4,catalog:3,verify:12};
+  return{current:24,archive:5,catalog:3,verify:18};
+}
 function updateTrendQuota(){
   if(!$('trQuotaNote'))return;
-  const q=trendQueries().length,r=(REGION_MAP[$('trRegion').value]||['KR']).length,o=trendOrders().length;
-  const archive=($('trDecisionMode')?.value!=='casting')?COVER_ARCHIVE_QUERIES.length:0;
-  const verify=$('trVerifySongs')?.value==='on'?22:0;
-  const catalog=$('trBackCatalog')?.value==='on'?5:0;
-  const calls=q*r*o+archive+verify+catalog;
-  $('trQuotaNote').textContent=`예상 search.list 호출 최대 ${calls}회 (현재 탐색 ${q*r*o} + 과거 커버 ${archive} + 실재 검증 ${verify} + 원곡 추적 ${catalog}) · 국내곡 우선 모드는 한국어 검색·KR 지역을 우선합니다.`;
+  const q=trendQueries().length,r=(REGION_MAP[$('trRegion').value]||['KR']).length,o=trendOrders().length,b=selectedSearchBudget(),ph=phaseBudgets(b);
+  const raw=q*r*o+(($('trDecisionMode')?.value!=='casting')?COVER_ARCHIVE_QUERIES.length:0)+($('trVerifySongs')?.value==='on'?10:0)+($('trBackCatalog')?.value==='on'?3:0);
+  const rolling=rollingSearchUsage();
+  $('trQuotaNote').textContent=`원래 최대 ${raw}회 → 이번 실행 네트워크 검색은 ${b}회에서 자동 중단 (현재 탐색 ${ph.current} / 과거 커버 ${ph.archive} / 원곡 ${ph.catalog} / 검증 ${ph.verify} 배정) · 최근 24시간 이 브라우저 사용 ${rolling}/85회 · 캐시 적중은 호출로 계산하지 않습니다.`;
 }
-['trPreset','trRegion','trMode','trDecisionMode','trBackCatalog','trChannelScope','trVerifySongs','trDomestic','trCoverDays','trPromoFilter'].forEach(id=>document.addEventListener('change',e=>{if(e.target?.id===id)updateTrendQuota();}));
+['trPreset','trRegion','trMode','trDecisionMode','trBackCatalog','trChannelScope','trVerifySongs','trDomestic','trCoverDays','trPromoFilter','trSearchBudget'].forEach(id=>document.addEventListener('change',e=>{if(e.target?.id===id)updateTrendQuota();}));
 document.addEventListener('change',e=>{if(e.target?.id==='trRateFloor'&&TRV.length){if(TRMETA)TRMETA.rateFloor=rateFloor();refreshTrendAnalysis('engage');}});
 document.addEventListener('change',e=>{if(e.target?.id==='trPromoFilter'&&TRV.length)refreshTrendAnalysis('speed');});
 document.addEventListener('input',e=>{if(e.target?.id==='trCustom')updateTrendQuota();});
@@ -699,10 +768,11 @@ function evidenceLinksHTML(name,evidence=[]){
   for(const e of evidence.slice(0,2))h+=`<a target="_blank" rel="noopener" href="${e.url}">근거 영상</a>`;
   return h+'</div>';
 }
-async function verifyTopSongs(candidates,maxCount=12){
-  SONG_VERIFICATIONS=new Map();let calls=0;
+async function verifyTopSongs(candidates,maxCount=6){
+  SONG_VERIFICATIONS=new Map();
   for(const s of candidates.slice(0,maxCount)){
-    const d=await yt('search',{part:'snippet',type:'video',q:`\"${s.name}\"`,order:'relevance',maxResults:8,regionCode:'KR',relevanceLanguage:'ko',safeSearch:'moderate'});calls++;
+    const d=await trendSearch({part:'snippet',type:'video',q:`\"${s.name}\"`,order:'relevance',maxResults:8,regionCode:'KR',relevanceLanguage:'ko',safeSearch:'moderate'},
+      {label:`곡 검증: ${s.name}`,phase:'verify',ttlHours:168});
     const key=normKey(s.name),matches=[];
     for(const it of(d.items||[])){
       const title=it.snippet?.title||'',channel=it.snippet?.channelTitle||'',nk=normKey(title);
@@ -710,16 +780,15 @@ async function verifyTopSongs(candidates,maxCount=12){
       const official=/(official|topic|제공 to youtube|music video|뮤직비디오|official audio|lyrics)/i.test(title+' '+channel)||AGG_CHANNEL_RE.test(channel);
       matches.push({title,channel,official,url:'https://www.youtube.com/watch?v='+it.id.videoId});
     }
-    const channels=new Set(matches.map(x=>x.channel));const official=matches.some(x=>x.official);
-    const verified=official||channels.size>=2;
-    SONG_VERIFICATIONS.set(s.key,{verified,status:official?'공식/유통 근거':channels.size>=2?'다중 채널 확인':'미확인',matches,calls:1});
+    const channels=new Set(matches.map(x=>x.channel)),official=matches.some(x=>x.official),verified=official||channels.size>=2;
+    SONG_VERIFICATIONS.set(s.key,{verified,status:d._skipped?'검증 호출 생략':official?'공식/유통 근거':channels.size>=2?'다중 채널 확인':'미확인',matches,cached:!!d._cache});
   }
-  return calls;
 }
-async function verifyTopArtists(candidates,maxCount=10){
-  ARTIST_VERIFICATIONS=new Map();let calls=0;
+async function verifyTopArtists(candidates,maxCount=4){
+  ARTIST_VERIFICATIONS=new Map();
   for(const a of candidates.slice(0,maxCount)){
-    const d=await yt('search',{part:'snippet',type:'video',q:`\"${a.name}\" 아이돌`,order:'relevance',maxResults:8,regionCode:'KR',relevanceLanguage:'ko',safeSearch:'moderate'});calls++;
+    const d=await trendSearch({part:'snippet',type:'video',q:`\"${a.name}\" 아이돌`,order:'relevance',maxResults:8,regionCode:'KR',relevanceLanguage:'ko',safeSearch:'moderate'},
+      {label:`아티스트 검증: ${a.name}`,phase:'verify',ttlHours:168});
     const key=normKey(a.name),matches=[];
     for(const it of(d.items||[])){
       const title=it.snippet?.title||'',channel=it.snippet?.channelTitle||'',combined=normKey(title+' '+channel);
@@ -728,9 +797,8 @@ async function verifyTopArtists(candidates,maxCount=10){
       matches.push({title,channel,official,url:'https://www.youtube.com/watch?v='+it.id.videoId});
     }
     const channels=new Set(matches.map(x=>x.channel)),official=matches.some(x=>x.official),verified=official||channels.size>=2;
-    ARTIST_VERIFICATIONS.set(normKey(a.name),{verified,status:official?'공식/방송 근거':channels.size>=2?'다중 채널 확인':'미확인',matches});
+    ARTIST_VERIFICATIONS.set(normKey(a.name),{verified,status:d._skipped?'검증 호출 생략':official?'공식/방송 근거':channels.size>=2?'다중 채널 확인':'미확인',matches,cached:!!d._cache});
   }
-  return calls;
 }
 function scaled(v,max){return max>0?Math.min(100,Math.log1p(Math.max(0,v))/Math.log1p(max)*100):0;}
 function aggregatePD(list,keyFn,labelFn){
@@ -804,36 +872,40 @@ async function runTrend(){
   const btn=$('trBtn');btn.disabled=true;clearLog('trLog');
   try{
     if(!YOUTUBE_API_KEY)throw new Error('config.js에 YouTube API 키를 넣으세요.');
-    SONG_VERIFICATIONS=new Map();ARTIST_VERIFICATIONS=new Map();
-    const queries=trendQueries(),regions=REGION_MAP[$('trRegion').value]||['KR'],orders=trendOrders();
+    resetSearchState();SONG_VERIFICATIONS=new Map();ARTIST_VERIFICATIONS=new Map();
+    const queries=trendQueries(),regions=REGION_MAP[$('trRegion').value]||['KR'],orders=trendOrders(),budgets=phaseBudgets(SEARCH_STATE.budget);
     const days=+$('trDays').value,after=new Date(Date.now()-days*86400000).toISOString();
     const coverDays=+$('trCoverDays').value,archiveAfter=new Date(Date.now()-coverDays*86400000).toISOString();
     const format=$('trFormat').value,category=$('trCategory').value,domesticMode=$('trDomestic').value;
-    const ids=new Set(),archiveIds=new Set(),sources=new Map();let searchCalls=0;
+    const ids=new Set(),archiveIds=new Set(),sources=new Map();
     const addSource=(id,label)=>{ids.add(id);if(!sources.has(id))sources.set(id,new Set());sources.get(id).add(label);};
-    log('trLog',`최근 ${days}일 · 국내곡 ${domesticMode==='strict'?'강제':'우선'} · 검색어 ${queries.length}개 · 시장 ${regions.length}개`);
-    for(const region of regions){
-      for(const q of queries){
-        for(const order of orders){
-          const p={part:'snippet',type:'video',q,order,maxResults:50,publishedAfter:after,regionCode:region,safeSearch:'moderate'};
-          if(domesticMode!=='all')p.relevanceLanguage='ko';
-          if(format!=='all')p.videoDuration=format;if(category!=='all')p.videoCategoryId=category;
-          const d=await yt('search',p);searchCalls++;
-          for(const it of(d.items||[])){const id=it.id?.videoId;if(id)addSource(id,`${region}/${q}/${order}`);}
-          log('trLog',`현재 트렌드 검색 ${searchCalls}회 · 후보 ${ids.size}개`);
-        }
-      }
+    log('trLog',`최근 ${days}일 · 검색 호출 예산 ${SEARCH_STATE.budget}회 · 현재 탐색 최대 ${budgets.current}회 · 최근 24시간 브라우저 사용 ${rollingSearchUsage()}/85회`);
+
+    // 넓이를 먼저 확보하도록 조회수순 전체 검색어 → 최신순 전체 검색어 → 추가 시장 순서로 배치
+    const currentPlan=[];
+    for(const order of orders)for(const region of regions)for(const q of queries)currentPlan.push({q,region,order});
+    for(const job of currentPlan.slice(0,budgets.current)){
+      const p={part:'snippet',type:'video',q:job.q,order:job.order,maxResults:50,publishedAfter:after,regionCode:job.region,safeSearch:'moderate'};
+      if(domesticMode!=='all')p.relevanceLanguage='ko';
+      if(format!=='all')p.videoDuration=format;if(category!=='all')p.videoCategoryId=category;
+      const d=await trendSearch(p,{label:`현재/${job.region}/${job.order}/${job.q}`,phase:'current',ttlHours:6});
+      for(const it of(d.items||[])){const id=it.id?.videoId;if(id)addSource(id,`${job.region}/${job.q}/${job.order}`);}
+      log('trLog',`현재 트렌드 · 네트워크 ${SEARCH_STATE.used}회 / 캐시 ${SEARCH_STATE.cacheHits}회 · 후보 ${ids.size}개`);
+      if(SEARCH_STATE.hardStop)break;
     }
-    if($('trDecisionMode').value!=='casting'){
-      log('trLog',`과거 명곡·커버 레퍼런스 ${coverDays}일 탐색 중...`);
-      for(const q of COVER_ARCHIVE_QUERIES){
+
+    if($('trDecisionMode').value!=='casting'&&!SEARCH_STATE.hardStop){
+      log('trLog',`과거 명곡·커버 레퍼런스 ${coverDays}일 · 최대 ${budgets.archive}회 탐색 중...`);
+      for(const q of COVER_ARCHIVE_QUERIES.slice(0,budgets.archive)){
         const p={part:'snippet',type:'video',q,order:'viewCount',maxResults:50,publishedAfter:archiveAfter,regionCode:'KR',relevanceLanguage:'ko',safeSearch:'moderate'};
         if(category!=='all')p.videoCategoryId=category;
-        const d=await yt('search',p);searchCalls++;
+        const d=await trendSearch(p,{label:`과거커버/${q}`,phase:'archive',ttlHours:24});
         for(const it of(d.items||[])){const id=it.id?.videoId;if(!id)continue;addSource(id,`coverarchive/${q}`);archiveIds.add(id);}
+        if(SEARCH_STATE.hardStop)break;
       }
     }
-    if(!ids.size)throw new Error('검색 결과가 없습니다. 기간이나 검색어 범위를 넓혀보세요.');
+    if(!ids.size)throw new Error('검색 결과가 없습니다. API 한도가 이미 소진됐거나 검색 조건이 너무 좁습니다. 캐시가 생긴 뒤 재실행하거나 기간을 넓혀보세요.');
+
     const videos=[];
     async function fetchVideoDetails(idList,originFallback='recent'){
       for(let i=0;i<idList.length;i+=50){
@@ -850,18 +922,25 @@ async function runTrend(){
         }
       }
     }
-    log('trLog',`영상 ${ids.size}개 통계 조회 중...`);await fetchVideoDetails([...ids]);
-    if($('trBackCatalog')?.value==='on'){
-      const seeds=[...new Set(videos.map(v=>extractSongInfo(v).name).filter(Boolean))].slice(0,5),extraIds=new Set();
+    log('trLog',`영상 ${ids.size}개 통계 일괄 조회 중...`);await fetchVideoDetails([...ids]);
+
+    if($('trBackCatalog')?.value==='on'&&!SEARCH_STATE.hardStop){
+      const seeds=[...new Set(videos.map(v=>extractSongInfo(v).name).filter(Boolean))].slice(0,Math.min(3,budgets.catalog)),extraIds=new Set();
       for(const song of seeds){
-        const d=await yt('search',{part:'snippet',type:'video',q:`"${song}" official`,order:'viewCount',maxResults:5,regionCode:'KR',relevanceLanguage:'ko',safeSearch:'moderate'});searchCalls++;
+        const d=await trendSearch({part:'snippet',type:'video',q:`"${song}" official`,order:'viewCount',maxResults:5,regionCode:'KR',relevanceLanguage:'ko',safeSearch:'moderate'},
+          {label:`원곡/${song}`,phase:'catalog',ttlHours:24});
         for(const it of(d.items||[])){const id=it.id?.videoId;if(!id||ids.has(id))continue;addSource(id,`catalog/${song}`);extraIds.add(id);}
+        if(SEARCH_STATE.hardStop)break;
       }
       if(extraIds.size){log('trLog',`원곡·카탈로그 후보 ${extraIds.size}개 추가 조회 중...`);await fetchVideoDetails([...extraIds],'catalog');}
     }
+
     const chIds=[...new Set(videos.map(v=>v.channelId))],chMap=new Map();
-    log('trLog',`채널 ${chIds.length}개 체급 조회 중...`);
-    for(let i=0;i<chIds.length;i+=50){const d=await yt('channels',{part:'snippet,statistics',id:chIds.slice(i,i+50).join(',')});for(const it of(d.items||[]))chMap.set(it.id,{title:it.snippet.title,subs:+it.statistics.subscriberCount||0,totalViews:+it.statistics.viewCount||0,hidden:!!it.statistics.hiddenSubscriberCount});}
+    log('trLog',`채널 ${chIds.length}개 체급 일괄 조회 중...`);
+    for(let i=0;i<chIds.length;i+=50){
+      const d=await yt('channels',{part:'snippet,statistics',id:chIds.slice(i,i+50).join(',')});
+      for(const it of(d.items||[]))chMap.set(it.id,{title:it.snippet.title,subs:+it.statistics.subscriberCount||0,totalViews:+it.statistics.viewCount||0,hidden:!!it.statistics.hiddenSubscriberCount});
+    }
     const ex=$('trExclude').value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
     TRV=videos.filter(v=>trendPassExclude(v,ex)).map(v=>{
       const c=chMap.get(v.channelId)||{title:v.channelTitle,subs:0,totalViews:0,hidden:true},a=deriveArtist(v);
@@ -872,14 +951,16 @@ async function runTrend(){
     TRPOOL=TRV.filter(v=>domesticPass(v)&&($('trPromoFilter').value==='mark'||!v.promoSuspect));
     if(!TRPOOL.length)throw new Error('국내곡·프로모션 필터 적용 후 남은 영상이 없습니다. 기준을 완화하세요.');
     buildTrendAggregates();buildPDEngine();
-    if($('trVerifySongs').value==='on'){
-      if(TRCAST.length){log('trLog','상위 아티스트 실재 여부를 YouTube 공식·방송 결과로 검증 중...');searchCalls+=await verifyTopArtists(TRCAST,10);}
-      if(TRSONGS.length){log('trLog','상위 곡 실재 여부를 YouTube 공식·유통 결과로 검증 중...');searchCalls+=await verifyTopSongs(TRSONGS,12);}
+
+    if($('trVerifySongs').value==='on'&&!SEARCH_STATE.hardStop){
+      if(TRCAST.length){log('trLog','상위 아티스트 4명 실재 검증 중 — 7일 캐시 사용...');await verifyTopArtists(TRCAST,4);}
+      if(TRSONGS.length&&!SEARCH_STATE.hardStop){log('trLog','상위 곡 6개 실재 검증 중 — 7일 캐시 사용...');await verifyTopSongs(TRSONGS,6);}
       buildPDEngine();
     }
-    TRMETA={days,coverDays,regions,queries,orders,searchCalls,after,format,category,decisionMode:$('trDecisionMode')?.value||'full',socialSignals:SOCIAL_SIGNALS.length,rateFloor:rateFloor(),generated:new Date().toISOString(),promoExcluded:TRV.filter(v=>v.promoSuspect).length,domesticMode};
+    TRMETA={days,coverDays,regions,queries,orders,searchCalls:SEARCH_STATE.used,searchCacheHits:SEARCH_STATE.cacheHits,searchSkipped:SEARCH_STATE.skipped.length,searchBudget:SEARCH_STATE.budget,after,format,category,decisionMode:$('trDecisionMode')?.value||'full',socialSignals:SOCIAL_SIGNALS.length,rateFloor:rateFloor(),generated:new Date().toISOString(),promoExcluded:TRV.filter(v=>v.promoSuspect).length,domesticMode};
     renderTrendReport('speed');$('trReport').style.display='block';$('trExport').style.display='block';$('trReport').scrollIntoView({behavior:'smooth'});
-    log('trLog',`완료 · 전체 ${TRV.length}개 / 분석 사용 ${TRPOOL.length}개 / 프로모션 의심 ${TRV.filter(v=>v.promoSuspect).length}개 / 검증곡 ${TRSONGS.filter(s=>s.verified).length}개 / 제작안 ${TRRECS.length}개`);
+    log('trLog',`완료 · 검색 네트워크 ${SEARCH_STATE.used}/${SEARCH_STATE.budget}회 · 캐시 ${SEARCH_STATE.cacheHits}회 · 생략 ${SEARCH_STATE.skipped.length}회 · 전체 ${TRV.length}개 / 분석 사용 ${TRPOOL.length}개 / 제작안 ${TRRECS.length}개`);
+    updateTrendQuota();
   }catch(e){log('trLog','오류: '+e.message);}
   btn.disabled=false;
 }
@@ -972,7 +1053,7 @@ function renderTrendReport(metric='speed'){
   const kws=Object.entries(titleKw).filter(([,o])=>o.n>=2).sort((a,b)=>b[1].views-a[1].views).slice(0,15);
   const topArtist=[...TRA].sort((a,b)=>b.views-a.views).slice(0,15),topChannel=[...TRC].sort((a,b)=>b.views-a.views).slice(0,15);
   const eligible=TRPOOL.filter(rateEligible),rateNote='최소 조회수 '+fmt(rateFloor())+'회 이상 우선';
-  let h='<div class="rephead"><h2>K-POP 트렌드 레이더</h2><div class="sub">최근 '+TRMETA.days+'일 · 시장 '+TRMETA.regions.join('/')+' · 검색 호출 '+TRMETA.searchCalls+'회 · 분석 사용 '+TRPOOL.length+'개 / 전체 '+allCount+'개 · '+rateNote+' · 생성 '+new Date(TRMETA.generated).toLocaleString('ko-KR')+'</div></div>';
+  let h='<div class="rephead"><h2>K-POP 트렌드 레이더</h2><div class="sub">최근 '+TRMETA.days+'일 · 시장 '+TRMETA.regions.join('/')+' · 검색 네트워크 '+TRMETA.searchCalls+'/'+TRMETA.searchBudget+'회 · 캐시 '+(TRMETA.searchCacheHits||0)+'회'+(TRMETA.searchSkipped?' · 생략 '+TRMETA.searchSkipped+'회':'')+' · 분석 사용 '+TRPOOL.length+'개 / 전체 '+allCount+'개 · '+rateNote+' · 생성 '+new Date(TRMETA.generated).toLocaleString('ko-KR')+'</div></div>';
   h+=promoCount?'<div class="filtered-note">프로모션/광고 유입 의심 '+promoCount+'개를 통계적으로 감지했습니다. 현재 설정이 ‘제외’이면 추천·순위 계산에서 빠집니다. 확정 광고 판정은 아닙니다.</div>':'';
   h+='<div class="kpi"><div><b>'+fmt(TRPOOL.length)+'</b><span>분석 영상</span></div><div><b>'+fmt(total)+'</b><span>후보 합산 조회수</span></div><div><b>'+fmt(totalLikes)+'</b><span>합산 좋아요</span></div><div><b>'+fmt(totalComments)+'</b><span>합산 댓글</span></div><div><b>'+medLikeRate.toFixed(2)+'%</b><span>좋아요율 중앙값</span></div><div><b>'+medCommentRate.toFixed(3)+'%</b><span>댓글률 중앙값</span></div><div><b>'+medEngage.toFixed(2)+'%</b><span>총반응률 중앙값</span></div><div><b>'+fmt(Math.round(medVph))+'</b><span>시간당 조회 중앙값</span></div><div><b>'+fmt(snapN)+' / '+fmt(likeSnapN)+'</b><span>조회 / 좋아요 실측 비교</span></div></div>';
   h+=renderPDDecisionSections();
