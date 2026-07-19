@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>K-POP 유튜브 트렌드 레이더</title>
+<title>K-POP PD 의사결정 레이더</title>
 <style>
 :root{
   --paper:#F7F6F2; --ink:#16181C; --sub:#5C6370; --line:#DDDAD2;
@@ -90,6 +90,29 @@ textarea{width:100%;padding:9px 11px;margin-top:5px;border:1px solid var(--line)
 .signal-tag{display:inline-block;font-size:10px;font-weight:800;background:var(--accent-soft);color:var(--accent);padding:2px 6px;border-radius:3px;margin-right:6px}
 .signal-meta{font-size:11px;color:var(--sub);font-family:var(--mono);margin-top:3px}
 .signal-action{font-size:12px;margin-top:3px}
+.pd-hero{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.pd-hero .cardish{border:1px solid var(--line);border-radius:9px;padding:14px;background:var(--paper)}
+.pd-hero h4{margin:0 0 7px;font-size:13px}
+.pd-hero .big{font-size:18px;font-weight:800;letter-spacing:-.3px}
+.pd-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.pd-grid.three{grid-template-columns:repeat(3,1fr)}
+.pd-box{border:1px solid var(--line);border-radius:9px;padding:14px;background:#fff}
+.pd-box h4{font-size:14px;margin:0 0 8px}
+.pd-score{font-family:var(--mono);font-weight:800;color:var(--accent)}
+.pd-recs{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.pd-rec{border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:9px;padding:15px;background:#fff}
+.pd-rec h4{margin:0 0 5px;font-size:15px}
+.pd-rec .why{font-size:12px;color:var(--sub);margin-top:6px}
+.pd-rec .risk{font-size:11px;color:#8A5A00;background:#FFF8E7;border-radius:5px;padding:6px 8px;margin-top:7px}
+.pd-chip{display:inline-block;font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;background:var(--bar-soft);color:var(--bar);margin:0 4px 4px 0}
+.pd-chip.hot{background:var(--accent-soft);color:var(--accent)}
+.pd-list{list-style:none;padding:0;margin:0}
+.pd-list li{padding:8px 0;border-bottom:1px dashed var(--line)}
+.pd-list li:last-child{border-bottom:none}
+.pd-list .name{font-weight:800}
+.pd-list .subline{font-size:11px;color:var(--sub)}
+@media(max-width:820px){.pd-hero,.pd-grid.three{grid-template-columns:1fr}.pd-grid,.pd-recs{grid-template-columns:1fr}}
+
 @media print{
   body{background:#fff;font-size:12px}
   .card{border:none;padding:0;margin-top:12px}
@@ -101,8 +124,8 @@ textarea{width:100%;padding:9px 11px;margin-top:5px;border:1px solid var(--line)
 <div class="wrap">
 
 <header>
-  <h1>K-POP 유튜브 트렌드 레이더 <span class="tag">DISCOVERY</span></h1>
-  <p>최근 조회수뿐 아니라 좋아요율·댓글률·반응 증가 속도까지 함께 비교해 뜨는 채널·아티스트·포맷을 발견하는 PD용 도구입니다.</p>
+  <h1>K-POP PD 의사결정 레이더 <span class="tag">CAST × FORMAT</span></h1>
+  <p>누가 뜨는지에서 끝나지 않고, 누구를 섭외해 무엇을 시키고 어떤 콘텐츠로 제작할지까지 제안하는 편성·캐스팅 도구입니다.</p>
 </header>
 
 <div class="card inputcard">
@@ -119,7 +142,7 @@ textarea{width:100%;padding:9px 11px;margin-top:5px;border:1px solid var(--line)
 </div>
 
 <div class="tabs noprint">
-  <button class="tab on" id="tabBtn0" onclick="switchTab(0)">1 · K-POP 트렌드 탐색</button>
+  <button class="tab on" id="tabBtn0" onclick="switchTab(0)">1 · PD 편성 인사이트</button>
   <button class="tab" id="tabBtn1" onclick="switchTab(1)">2 · 발견 채널 분석</button>
   <button class="tab" id="tabBtn2" onclick="switchTab(2)">3 · 영상 댓글 분석</button>
 </div>
@@ -127,11 +150,15 @@ textarea{width:100%;padding:9px 11px;margin-top:5px;border:1px solid var(--line)
 <!-- ============ TAB 0 : K-POP TREND DISCOVERY ============ -->
 <div class="panel on" id="panel0">
   <div class="card inputcard">
-    <h2>최근 K-POP 트렌드 탐색 — 채널·아티스트 발견용</h2>
+    <h2>PD 의사결정 레이더 — 섭외 → 아이템 → 제작안</h2>
     <div class="trend-controls">
       <div>
         <label>최근 기간</label>
         <select id="trDays"><option value="1">24시간</option><option value="3">3일</option><option value="7" selected>7일</option><option value="14">14일</option><option value="30">30일</option><option value="90">90일</option></select>
+      </div>
+      <div>
+        <label>의사결정 모드</label>
+        <select id="trDecisionMode"><option value="full" selected>전체 — 섭외+커버+예능</option><option value="casting">섭외 후보 중심</option><option value="cover">여보세요? 커버 중심</option><option value="variety">전화기 옆 사서함 중심</option></select>
       </div>
       <div>
         <label>시장 표본</label>
@@ -157,6 +184,10 @@ textarea{width:100%;padding:9px 11px;margin-top:5px;border:1px solid var(--line)
         <label>반응률 최소 조회수</label>
         <select id="trRateFloor"><option value="1000">1천 이상</option><option value="10000" selected>1만 이상</option><option value="50000">5만 이상</option><option value="100000">10만 이상</option></select>
       </div>
+      <div>
+        <label>역주행 원곡 추적</label>
+        <select id="trBackCatalog"><option value="on" selected>사용 — 상위 곡 5개 원곡 조회</option><option value="off">미사용 — API 절약</option></select>
+      </div>
       <div class="wide">
         <label>추가 검색어 (선택, 줄바꿈 구분)</label>
         <textarea id="trCustom" placeholder="예: rookie idol&#10;5세대 걸그룹&#10;보이그룹 직캠"></textarea>
@@ -165,10 +196,15 @@ textarea{width:100%;padding:9px 11px;margin-top:5px;border:1px solid var(--line)
         <label>제외 키워드 (선택, 쉼표 구분)</label>
         <input id="trExclude" placeholder="예: reaction, lyrics, compilation">
       </div>
+      <div class="wide">
+        <label>X 보조신호 파일 (선택 · CSV/JSON)</label>
+        <input type="file" id="trSocialFile" accept=".csv,.json,text/csv,application/json">
+        <div class="note" id="trSocialStatus">YouTube만으로도 작동합니다. X 연동 시 entity,type,mentions,likes,reposts,quotes 열을 가진 파일을 불러오면 섭외·곡·포맷 점수에 보조 반영합니다.</div>
+      </div>
     </div>
     <div class="note" id="trQuotaNote">검색 호출량 계산 중…</div>
-    <div class="warn">‘아티스트 후보’는 공식 채널명 또는 영상 제목 규칙으로 자동 추정합니다. 반응률 순위는 작은 표본 왜곡을 줄이기 위해 선택한 최소 조회수 이상 영상을 우선합니다. YouTube 검색 API는 좋아요순 검색을 지원하지 않으므로, 먼저 조회수·최신순으로 후보군을 확보한 뒤 좋아요·댓글 지표로 재정렬합니다.</div>
-    <button class="primary" onclick="runTrend()" id="trBtn">K-POP 트렌드 탐색</button>
+    <div class="warn">아티스트·곡명·장르·게임은 제목·설명·태그·해시태그 규칙으로 자동 추정합니다. 첫 실행의 역주행 판정은 ‘최근 여러 채널 재등장’ 중심이며, 두 번째 실행부터 저장된 조회수 변화로 오래된 원곡의 실제 재가속을 확인합니다. X는 브라우저에 토큰을 넣지 않고 CSV/JSON 보조신호만 선택적으로 합칩니다.</div>
+    <button class="primary" onclick="runTrend()" id="trBtn">PD 편성안 생성</button>
     <div class="log" id="trLog"></div>
   </div>
   <div class="card" id="trReport" style="display:none"></div>
@@ -176,7 +212,8 @@ textarea{width:100%;padding:9px 11px;margin-top:5px;border:1px solid var(--line)
     <button class="ghost" onclick="trendCSV('videos')">영상 CSV</button>
     <button class="ghost" onclick="trendCSV('channels')">채널 CSV</button>
     <button class="ghost" onclick="trendCSV('artists')">아티스트 후보 CSV</button>
-    <button class="ghost" onclick="trendCopy()">AI 심층분석용 복사</button>
+    <button class="ghost" onclick="trendCSV('decisions')">PD 제작안 CSV</button>
+    <button class="ghost" onclick="trendCopy()">PD 심층분석용 복사</button>
     <span class="note" id="trCopyMsg"></span>
   </div>
 </div>
@@ -301,16 +338,29 @@ const TREND_PRESETS={
     'fancam|FanCam|직캠|입덕직캠|KPOP stage|dance practice'
   ]
 };
+
+const PD_QUERY_PACKS={
+  full:[
+    'KPOP cover|아이돌 커버|live cover|노래방|보컬 라이브',
+    'KPOP challenge|댄스 챌린지|viral song|역주행 곡',
+    '아이돌 게임|밸런스게임|마피아게임|랜덤플레이댄스|예능'
+  ],
+  casting:['KPOP comeback|아이돌 컴백|rookie idol|신인 아이돌','역주행|viral KPOP|다시 뜨는 노래'],
+  cover:['KPOP cover|아이돌 커버|live cover|노래방|보컬 라이브','viral song|역주행 곡|커버곡 추천'],
+  variety:['아이돌 게임|밸런스게임|마피아게임|랜덤플레이댄스|예능','idol challenge|whisper challenge|emoji quiz|텔레파시 게임']
+};
 const REGION_MAP={KR:['KR'],JP:['JP'],US:['US'],SEA:['ID','TH','PH'],GLOBAL:['KR','JP','US','ID']};
 const AGG_CHANNEL_RE=/(HYBE LABELS|SMTOWN|JYP Entertainment|YG ENTERTAINMENT|BELIFT LAB|STARSHIP|CUBE ENTERTAINMENT|P NATION|RBW|FNCEnt|FNC ENTERTAINMENT|WAKEONE|KQ ENTERTAINMENT|EDAM|SOURCE MUSIC|ADOR|KOZ ENTERTAINMENT|PLEDIS|Fantagio|WM ENTERTAINMENT|DSPmedia|IST Entertainment|Woollim|High Up Entertainment|ATTRAKT|MODHAUS|S2 Entertainment|THEBLACKLABEL|Big Planet Made|BPM Entertainment|MYSTIC STORY|AOMG|H1GHR MUSIC|MORE VISION|1theK|M2|Mnet K-POP|KBS Kpop|SBSKPOP|SBS Inkigayo|MBCkpop|MBC every1|ALL THE K-POP|THE K-POP|Stone Music|dingo music|딩고 뮤직|it's Live|아리랑|ARIRANG|GENIE MUSIC|지니뮤직|Melon|뮤직뱅크|쇼! 음악중심|인기가요|엠카운트다운)/i;
 const GENERIC_ARTIST_RE=/^(official|music|kpop|k-pop|youtube|topic|entertainment|records?|labels?|studio|channel|tv|broadcast)$/i;
 const TREND_STOP=new Set(['official','music','video','kpop','performance','stage','fancam','dance','practice','shorts','clip','live','comeback','debut','뮤직비디오','퍼포먼스','비디오','직캠','입덕직캠','무대','안무영상','라이브','클립','컴백','데뷔','신곡']);
-let TRV=[],TRC=[],TRA=[],TRMETA=null;
+let TRV=[],TRC=[],TRA=[],TRMETA=null,TRPD=null,TRSONGS=[],TRFORMATS=[],TRGENRES=[],TRGAMES=[],TRCAST=[],TRRECS=[];
+let SOCIAL_SIGNALS=[];
 
 function trendQueries(){
   const base=[...(TREND_PRESETS[$('trPreset').value]||TREND_PRESETS.all)];
+  const decision=[...(PD_QUERY_PACKS[$('trDecisionMode')?.value||'full']||PD_QUERY_PACKS.full)];
   const custom=$('trCustom').value.split(/\n+/).map(s=>s.trim()).filter(Boolean);
-  return [...new Set([...base,...custom])];
+  return [...new Set([...base,...decision,...custom])];
 }
 function trendOrders(){
   const m=$('trMode').value;
@@ -319,11 +369,12 @@ function trendOrders(){
 function updateTrendQuota(){
   if(!$('trQuotaNote'))return;
   const q=trendQueries().length,r=(REGION_MAP[$('trRegion').value]||['KR']).length,o=trendOrders().length;
-  const calls=q*r*o;
-  $('trQuotaNote').textContent=`예상 search.list 호출 ${calls}회 · 기본 일일 한도 100회. 결과 상세 조회는 별도 저비용 list 호출로 묶어서 처리합니다.`;
+  const catalog=$('trBackCatalog')?.value==='on'?5:0;
+  const calls=q*r*o+catalog;
+  $('trQuotaNote').textContent=`예상 search.list 호출 ${calls}회 (${q}개 검색어 × ${r}개 시장 × ${o}개 정렬${catalog?' + 원곡 후보 5회':''}) · 검색 호출이 100회를 넘으면 범위를 줄이세요.`;
 }
-['trPreset','trRegion','trMode'].forEach(id=>document.addEventListener('change',e=>{if(e.target?.id===id)updateTrendQuota();}));
-document.addEventListener('change',e=>{if(e.target?.id==='trRateFloor'&&TRV.length){if(TRMETA)TRMETA.rateFloor=rateFloor();buildTrendAggregates();renderTrendReport('engage');}});
+['trPreset','trRegion','trMode','trDecisionMode','trBackCatalog'].forEach(id=>document.addEventListener('change',e=>{if(e.target?.id===id)updateTrendQuota();}));
+document.addEventListener('change',e=>{if(e.target?.id==='trRateFloor'&&TRV.length){if(TRMETA)TRMETA.rateFloor=rateFloor();buildTrendAggregates();buildPDEngine();renderTrendReport('engage');}});
 document.addEventListener('input',e=>{if(e.target?.id==='trCustom')updateTrendQuota();});
 setTimeout(updateTrendQuota,0);
 
@@ -412,6 +463,154 @@ function applyAndSaveTrendSnapshots(videos){
   try{localStorage.setItem('kpopTrendSnapshotsV2',JSON.stringify(trimmed));}catch{}
 }
 
+/* ---------- PD 의사결정 엔진: 제목·설명·태그·해시태그 분류 ---------- */
+const CONTENT_RULES=[
+  {key:'official_release',label:'컴백·신곡/MV',re:/(official\s*(mv|m\/v)|music video|뮤직비디오|comeback|컴백|debut|데뷔|신곡|title track|album highlight)/i},
+  {key:'live_cover',label:'라이브·커버',re:/(cover|커버|covered by|노래방|karaoke|live clip|보컬 라이브|it's live|리무진서비스|begin again|복면가왕)/i},
+  {key:'performance',label:'퍼포먼스·안무',re:/(performance video|dance practice|안무영상|choreography|relay dance|릴레이댄스|studio choom|퍼포먼스)/i},
+  {key:'challenge',label:'챌린지·밈',re:/(challenge|챌린지|dance challenge|viral|밈|meme|trend)/i},
+  {key:'fancam',label:'직캠·멤버집중',re:/(fancam|직캠|입덕직캠|facecam|얼빡직캠|focus)/i},
+  {key:'variety_game',label:'예능·게임',re:/(게임|game|밸런스|balance game|마피아|mafia|랜덤플레이댄스|random play dance|퀴즈|quiz|텔레파시|몸으로 말해요|whisper challenge|고요 속의 외침|이상형 월드컵|월드컵)/i},
+  {key:'interview',label:'토크·인터뷰',re:/(interview|인터뷰|토크|talk|질문|q&a|문답|프로필|tmi|mbti)/i},
+  {key:'behind',label:'비하인드·브이로그',re:/(behind|비하인드|making|메이킹|vlog|브이로그|backstage|대기실)/i},
+  {key:'reaction',label:'리액션·리뷰',re:/(reaction|리액션|review|리뷰|해설|분석)/i},
+  {key:'shortform',label:'쇼츠·숏폼',re:/(#shorts\b|#쇼츠\b|shorts|릴스|reels|틱톡|tiktok)/i}
+];
+const GENRE_RULES=[
+  {key:'ballad',label:'발라드',re:/(ballad|발라드|감성 발라드)/i},
+  {key:'rnb',label:'R&B·소울',re:/(r&b|rnb|알앤비|soul|소울)/i},
+  {key:'rock',label:'록·밴드',re:/(rock|록|밴드|band|pop punk|팝펑크|emo)/i},
+  {key:'hiphop',label:'힙합·랩',re:/(hip hop|hiphop|힙합|rap|랩|trap|트랩)/i},
+  {key:'citypop',label:'시티팝·레트로',re:/(city pop|citypop|시티팝|retro|레트로|80s|90s|뉴트로)/i},
+  {key:'y2k',label:'Y2K·뉴잭',re:/(y2k|new jack|뉴잭|2000s|투스텝|2-step)/i},
+  {key:'edm',label:'EDM·하우스',re:/(edm|house|하우스|techno|테크노|drum and bass|dnb)/i},
+  {key:'acoustic',label:'어쿠스틱·포크',re:/(acoustic|어쿠스틱|folk|포크|unplugged|언플러그드)/i},
+  {key:'trot',label:'트로트',re:/(trot|트로트)/i},
+  {key:'dancepop',label:'댄스팝·디스코',re:/(dance pop|댄스팝|disco|디스코|funk|펑크|groove|그루브)/i},
+  {key:'latin',label:'라틴·아프로',re:/(latin|라틴|afro|아프로|reggaeton|레게톤|amapiano)/i},
+  {key:'jazz',label:'재즈·보사노바',re:/(jazz|재즈|bossa|보사노바|swing|스윙)/i}
+];
+const GAME_RULES=[
+  {key:'balance',label:'밸런스 게임',re:/(밸런스\s*게임|balance game|양자택일|둘 중 하나)/i},
+  {key:'mafia',label:'마피아 게임',re:/(마피아|mafia|라이어 게임|liar game)/i},
+  {key:'randomdance',label:'랜덤 플레이 댄스',re:/(랜덤\s*플레이\s*댄스|random play dance|랜플댄)/i},
+  {key:'whisper',label:'고요 속의 외침',re:/(고요 속의 외침|whisper challenge|헤드폰 게임|입모양 퀴즈)/i},
+  {key:'emoji',label:'이모지·초성 퀴즈',re:/(이모지|emoji|초성\s*퀴즈|초성게임)/i},
+  {key:'telepathy',label:'텔레파시 게임',re:/(텔레파시|telepathy|동시에 말하기|일심동체)/i},
+  {key:'worldcup',label:'이상형 월드컵',re:/(이상형\s*월드컵|월드컵|ideal type world cup)/i},
+  {key:'drawing',label:'그림·몸으로 말해요',re:/(몸으로 말해요|릴레이 그림|그림 퀴즈|캐치마인드|pictionary)/i},
+  {key:'tmi',label:'TMI·프로필 토크',re:/(tmi|프로필|mbti|문답|q&a|사소한 질문)/i}
+];
+function normKey(s){return String(s||'').toLowerCase().replace(/[#@]/g,'').replace(/[^가-힣a-z0-9]+/g,' ').trim();}
+function videoText(v){return [v.title,v.description,...(v.tags||[])].join(' ');}
+function extractHashtags(v){return [...new Set((videoText(v).match(/#[가-힣A-Za-z0-9_]+/g)||[]).map(x=>x.slice(1)))];}
+function cleanSongName(s){
+  return String(s||'').replace(/#[가-힣A-Za-z0-9_]+/g,' ').replace(/[\[【(](official|mv|m\/v|performance|dance|cover|live|직캠|무대)[^\]】)]*[\]】)]/ig,' ')
+    .replace(/\b(official|mv|m\/v|music video|performance video|dance practice|cover|covered by|live clip|fancam|직캠|무대|lyrics?|audio|teaser)\b.*$/ig,' ')
+    .replace(/\s+/g,' ').replace(/^[\-–—:|\s]+|[\-–—:|\s]+$/g,'').trim().slice(0,70);
+}
+function extractSongCandidate(v){
+  const t=String(v.title||'').replace(/^\s*(?:\[[^\]]+\]\s*)+/,'').trim();
+  const patterns=[
+    /[‘'“\"]([^’'”\"]{2,60})[’'”\"]\s*(?:cover|커버|live|라이브|challenge|챌린지|mv|m\/v|performance)?/i,
+    /(?:cover|커버|covered by|노래방)\s*(?:of|곡)?\s*[:\-–—]?\s*[‘'“\"]?([^’'”\"\[\]()|]{2,60})/i,
+    /[-–—]\s*([^|\[\]()#]{2,60}?)(?=\s*(?:\||\[|\(|official|mv|m\/v|performance|dance|cover|커버|live|직캠|fancam|$))/i,
+    /^([^|]{2,55}?)(?=\s*(?:official\s*(?:mv|m\/v)|music video|뮤직비디오))/i
+  ];
+  for(const re of patterns){const m=t.match(re);if(m){const x=cleanSongName(m[1]);if(x.length>=2&&!/^(kpop|케이팝|아이돌|노래|신곡|컴백|데뷔)$/i.test(x))return x;}}
+  let lead=t.match(/^(.{2,80}?)(?=\s+(?:dance challenge|challenge|챌린지|직캠|fancam|무대|stage|live clip|performance video))/i)?.[1]||'';
+  if(lead&&v.artist)lead=lead.replace(new RegExp('^'+String(v.artist).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*[-–—:]?\\s*','i'),'');
+  lead=cleanSongName(lead);if(lead.length>=2&&!/^(kpop|케이팝|아이돌)$/i.test(lead))return lead;
+  return '';
+}
+function derivePDFeatures(v){
+  const text=videoText(v),contentTypes=CONTENT_RULES.filter(r=>r.re.test(text)).map(r=>r.key);
+  if(formatShort(v)&&!contentTypes.includes('shortform'))contentTypes.push('shortform');
+  const genres=GENRE_RULES.filter(r=>r.re.test(text)).map(r=>r.key);
+  const games=GAME_RULES.filter(r=>r.re.test(text)).map(r=>r.key);
+  const ageDays=v.hours/24,song=extractSongCandidate(v),hashtags=extractHashtags(v);
+  const isComeback=ageDays<=21&&(contentTypes.includes('official_release')||/(컴백|comeback|debut|데뷔|신곡|new single|new album)/i.test(text));
+  const accelRatio=v.measuredVph!=null&&v.vph>0?v.measuredVph/v.vph:null;
+  const isResurgence=ageDays>=30&&accelRatio!=null&&accelRatio>=2.5&&v.measuredVph>=100;
+  return{...v,contentTypes,genres,games,songCandidate:song,hashtags,ageDays,isComeback,isResurgence,accelRatio,
+    isCover:contentTypes.includes('live_cover'),isChallenge:contentTypes.includes('challenge'),
+    isVariety:contentTypes.includes('variety_game')||contentTypes.includes('interview')||contentTypes.includes('behind')};
+}
+function csvLine(line){
+  const out=[];let cur='',q=false;
+  for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'){if(q&&line[i+1]==='"'){cur+='"';i++;}else q=!q;}else if(ch===','&&!q){out.push(cur);cur='';}else cur+=ch;}out.push(cur);return out;
+}
+function parseSocialText(text,name=''){
+  if(/\.json$/i.test(name)||String(text).trim().startsWith('[')||String(text).trim().startsWith('{')){
+    const x=JSON.parse(text),arr=Array.isArray(x)?x:(x.data||x.items||[]);return arr.map(o=>({entity:o.entity||o.artist||o.song||o.hashtag||'',type:o.type||'',mentions:+o.mentions||+o.count||0,likes:+o.likes||0,reposts:+o.reposts||+o.retweets||0,quotes:+o.quotes||0})).filter(o=>o.entity);
+  }
+  const lines=String(text).split(/\r?\n/).filter(Boolean);if(lines.length<2)return[];
+  const head=csvLine(lines[0]).map(normKey);
+  const idx=k=>head.findIndex(x=>x===k||x.includes(k));
+  return lines.slice(1).map(line=>{const a=csvLine(line);return{entity:a[idx('entity')]||a[idx('artist')]||a[idx('song')]||a[idx('hashtag')]||'',type:a[idx('type')]||'',mentions:+a[idx('mentions')]||+a[idx('count')]||0,likes:+a[idx('likes')]||0,reposts:+a[idx('reposts')]||+a[idx('retweets')]||0,quotes:+a[idx('quotes')]||0};}).filter(o=>o.entity);
+}
+function socialRaw(name){
+  const k=normKey(name);if(!k)return 0;let s=0;
+  for(const x of SOCIAL_SIGNALS){const e=normKey(x.entity);if(e&&(e===k||e.includes(k)||k.includes(e)))s+=x.mentions+x.likes+x.reposts*2+x.quotes*4;}
+  return s;
+}
+document.addEventListener('change',async e=>{
+  if(e.target?.id!=='trSocialFile')return;
+  const f=e.target.files?.[0];if(!f){SOCIAL_SIGNALS=[];$('trSocialStatus').textContent='X 보조신호를 사용하지 않습니다.';return;}
+  try{SOCIAL_SIGNALS=parseSocialText(await f.text(),f.name);$('trSocialStatus').textContent=`X 보조신호 ${SOCIAL_SIGNALS.length}개를 불러왔습니다. 다음 레이더 실행부터 점수에 반영합니다.`;}catch(err){SOCIAL_SIGNALS=[];$('trSocialStatus').textContent='파일 해석 실패: '+err.message;}
+});
+function scaled(v,max){return max>0?Math.min(100,Math.log1p(Math.max(0,v))/Math.log1p(max)*100):0;}
+function aggregatePD(list,keyFn,labelFn){
+  const m=new Map();
+  for(const v of list){for(const key of keyFn(v)){if(!key)continue;const k=normKey(key);if(!k)continue;if(!m.has(k))m.set(k,{key,name:labelFn(key),videos:[],views:0,likes:0,comments:0,vph:0,channels:new Set(),artists:new Set(),covers:0,challenges:0,official:0,fresh:0,old:0});const o=m.get(k);o.videos.push(v);o.views+=v.views;o.likes+=v.likes;o.comments+=v.comments;o.vph+=v.vph;o.channels.add(v.channelTitle);o.artists.add(v.artist);o.covers+=v.isCover?1:0;o.challenges+=v.isChallenge?1:0;o.official+=v.contentTypes.includes('official_release')?1:0;o.fresh+=v.ageDays<=14?1:0;o.old+=v.ageDays>=30?1:0;}}
+  return [...m.values()].map(o=>({...o,count:o.videos.length,channelCount:o.channels.size,artistCount:o.artists.size,engage:pct(o.likes+o.comments,o.views),likeRate:pct(o.likes,o.views),medianVph:median(o.videos.map(v=>v.vph)),social:socialRaw(o.name)}));
+}
+function labelFor(rules,key){return rules.find(r=>r.key===key)?.label||key;}
+function buildPDEngine(){
+  TRSONGS=aggregatePD(TRV,v=>v.songCandidate?[v.songCandidate]:[],x=>x).filter(x=>x.name.length>=2);
+  TRFORMATS=aggregatePD(TRV,v=>v.contentTypes,x=>labelFor(CONTENT_RULES,x));
+  TRGENRES=aggregatePD(TRV,v=>v.genres,x=>labelFor(GENRE_RULES,x));
+  TRGAMES=aggregatePD(TRV,v=>v.games,x=>labelFor(GAME_RULES,x));
+  const songMax={vph:Math.max(1,...TRSONGS.map(x=>x.vph)),spread:Math.max(1,...TRSONGS.map(x=>x.channelCount)),engage:Math.max(1,...TRSONGS.map(x=>x.engage)),social:Math.max(1,...TRSONGS.map(x=>x.social))};
+  TRSONGS=TRSONGS.map(x=>({...x,resurgence:(x.channelCount>=3&&(x.covers+x.challenges)>=2)||x.videos.some(v=>v.isResurgence),
+    score:Math.round(scaled(x.vph,songMax.vph)*.30+scaled(x.channelCount,songMax.spread)*.25+Math.min(100,(x.covers*22+x.challenges*16))*.20+scaled(x.engage,songMax.engage)*.15+scaled(x.social,songMax.social)*.10)})).sort((a,b)=>b.score-a.score||b.views-a.views);
+  const scoreEntities=arr=>{const mx={vph:Math.max(1,...arr.map(x=>x.vph)),spread:Math.max(1,...arr.map(x=>x.channelCount)),engage:Math.max(1,...arr.map(x=>x.engage)),social:Math.max(1,...arr.map(x=>x.social))};return arr.map(x=>({...x,score:Math.round(scaled(x.vph,mx.vph)*.35+scaled(x.channelCount,mx.spread)*.25+scaled(x.engage,mx.engage)*.25+scaled(x.social,mx.social)*.15)})).sort((a,b)=>b.score-a.score);};
+  TRFORMATS=scoreEntities(TRFORMATS);TRGENRES=scoreEntities(TRGENRES);TRGAMES=scoreEntities(TRGAMES);
+  const resurgenceSongs=new Set(TRSONGS.filter(x=>x.resurgence).map(x=>x.key));
+  const raw=TRA.map(a=>{const vids=a.videos,comeback=vids.filter(v=>v.isComeback),resurgence=vids.filter(v=>v.isResurgence||resurgenceSongs.has(normKey(v.songCandidate))),vocal=vids.filter(v=>v.isCover||v.contentTypes.includes('fancam')||v.contentTypes.includes('performance')),variety=vids.filter(v=>v.isVariety||v.isChallenge||v.contentTypes.includes('shortform'));return{...a,comebackCount:comeback.length,resurgenceCount:resurgence.length,vocalCount:vocal.length,varietyCount:variety.length,comebackVph:comeback.reduce((s,v)=>s+v.vph,0),resurgenceVph:resurgence.reduce((s,v)=>s+(v.measuredVph||v.vph),0),vocalVph:vocal.reduce((s,v)=>s+v.vph,0),varietyVph:variety.reduce((s,v)=>s+v.vph,0),social:socialRaw(a.name)};});
+  const mx={vph:Math.max(1,...raw.map(x=>x.maxVph)),eng:Math.max(1,...raw.map(x=>x.engage)),spread:Math.max(1,...raw.map(x=>x.channelCount)),break:Math.max(1,...raw.map(x=>x.medianBreak)),vocal:Math.max(1,...raw.map(x=>x.vocalVph)),variety:Math.max(1,...raw.map(x=>x.varietyVph)),social:Math.max(1,...raw.map(x=>x.social)),comeback:Math.max(1,...raw.map(x=>x.comebackVph)),resurge:Math.max(1,...raw.map(x=>x.resurgenceVph))};
+  TRCAST=raw.map(x=>{const base=scaled(x.maxVph,mx.vph)*.32+scaled(x.engage,mx.eng)*.18+scaled(x.channelCount,mx.spread)*.15+scaled(x.medianBreak,mx.break)*.15+scaled(x.social,mx.social)*.10+Math.min(100,(x.comebackCount+x.resurgenceCount)*25)*.10;return{...x,castScore:Math.round(base),comebackScore:Math.round(base*.55+scaled(x.comebackVph,mx.comeback)*.45),resurgenceScore:Math.round(base*.45+scaled(x.resurgenceVph,mx.resurge)*.55),vocalScore:Math.round(base*.55+scaled(x.vocalVph,mx.vocal)*.45),varietyScore:Math.round(base*.55+scaled(x.varietyVph,mx.variety)*.45)};}).sort((a,b)=>b.castScore-a.castScore);
+  const usedSongs=new Set(),usedGames=new Set();TRRECS=[];
+  const coverPool=TRSONGS.filter(s=>s.covers+s.challenges>0||s.resurgence);const songChoices=coverPool.length?coverPool:TRSONGS;
+  for(const cast of [...TRCAST].sort((a,b)=>b.vocalScore-a.vocalScore).slice(0,5)){
+    const song=songChoices.find(s=>!usedSongs.has(s.key)&&!normKey(s.name).includes(normKey(cast.name))&&!normKey(cast.name).includes(normKey(s.name)));
+    if(!song)continue;usedSongs.add(song.key);TRRECS.push({show:'여보세요?',score:Math.round((cast.vocalScore+song.score)/2),title:`${cast.name}에게 「${song.name}」 커버`,cast:cast.name,item:song.name,why:`섭외점수 ${cast.castScore}, 보컬 적합 ${cast.vocalScore}; 곡은 ${song.channelCount}개 채널·${song.artistCount}개 아티스트에서 포착되고 커버/챌린지 ${song.covers+song.challenges}편입니다.`,risk:song.artistCount<2?'곡명 자동 추정값과 원곡 권리·음역을 수동 확인하세요.':'원곡 권리와 아티스트 음역·톤 적합성을 최종 확인하세요.'});
+    if(TRRECS.filter(x=>x.show==='여보세요?').length>=3)break;
+  }
+  const gamePool=TRGAMES.length?TRGAMES:TRFORMATS.filter(x=>['variety_game','challenge','interview'].includes(x.key));
+  for(const cast of [...TRCAST].sort((a,b)=>b.varietyScore-a.varietyScore).slice(0,5)){
+    const game=gamePool.find(g=>!usedGames.has(g.key));if(!game)continue;usedGames.add(game.key);TRRECS.push({show:'전화기 옆 사서함',score:Math.round((cast.varietyScore+game.score)/2),title:`${cast.name} × ${game.name}`,cast:cast.name,item:game.name,why:`예능 적합 ${cast.varietyScore}, 댓글·반응 기반 섭외점수 ${cast.castScore}; 포맷은 ${game.count}편·${game.channelCount}개 채널에서 포착됐습니다.`,risk:'게임이 출연자의 캐릭터와 기존 팬덤 서사에 맞는지 사전 질문지로 검증하세요.'});if(TRRECS.filter(x=>x.show==='전화기 옆 사서함').length>=3)break;
+  }
+  TRRECS.sort((a,b)=>b.score-a.score);
+  TRPD={comeback:[...TRCAST].filter(x=>x.comebackCount).sort((a,b)=>b.comebackScore-a.comebackScore).slice(0,7),resurgence:[...TRCAST].filter(x=>x.resurgenceCount).sort((a,b)=>b.resurgenceScore-a.resurgenceScore).slice(0,7),cast:TRCAST.slice(0,10),songs:songChoices.slice(0,10),genres:TRGENRES.slice(0,8),formats:TRFORMATS.slice(0,8),games:TRGAMES.slice(0,8),recs:TRRECS};
+}
+function pdList(items,type){
+  if(!items?.length)return '<div class="note">현재 표본에서 확정 후보가 없습니다. 두 번째 실행 또는 기간 확대가 필요합니다.</div>';
+  return '<ul class="pd-list">'+items.map((x,i)=>{let name=x.name,score=type==='comeback'?x.comebackScore:type==='resurgence'?x.resurgenceScore:(x.score??x.castScore),sub='';if(['cast','comeback','resurgence'].includes(type))sub=`영상 ${x.count}편 · ${x.channelCount}개 채널 · 총반응 ${x.engage.toFixed(2)}%${type==='comeback'?` · 컴백근거 ${x.comebackCount}편`:type==='resurgence'?` · 재가속근거 ${x.resurgenceCount}편`:''}`;else sub=`${x.count}편 · ${x.channelCount}개 채널 · ${fmt(Math.round(x.vph||0))}/h · 반응 ${x.engage.toFixed(2)}%`;return `<li><span class="name">${i+1}. ${esc(name)}</span> <span class="pd-score">${score}</span><div class="subline">${sub}</div></li>`;}).join('')+'</ul>';
+}
+function renderPDDecisionSections(){
+  if(!TRPD)return'';const topCast=TRPD.cast[0],topSong=TRPD.songs[0],topFormat=TRPD.games[0]||TRPD.formats[0];
+  let h='<h3 class="sec">오늘의 PD 결론 — 누구 × 무엇 × 어떤 포맷</h3><div class="pd-hero">';
+  h+=`<div class="cardish"><h4>섭외 1순위</h4><div class="big">${topCast?esc(topCast.name):'-'}</div><div class="note">${topCast?'종합 '+topCast.castScore+' · 보컬 '+topCast.vocalScore+' · 예능 '+topCast.varietyScore:'후보 없음'}</div></div>`;
+  h+=`<div class="cardish"><h4>커버곡 1순위</h4><div class="big">${topSong?esc(topSong.name):'-'}</div><div class="note">${topSong?'점수 '+topSong.score+' · '+topSong.channelCount+'개 채널 · '+(topSong.resurgence?'재점화 신호':'확산 신호'):'후보 없음'}</div></div>`;
+  h+=`<div class="cardish"><h4>예능 아이템 1순위</h4><div class="big">${topFormat?esc(topFormat.name):'-'}</div><div class="note">${topFormat?'점수 '+topFormat.score+' · '+topFormat.count+'편 포착':'후보 없음'}</div></div></div>`;
+  h+='<h3 class="sec">1. 누구를 섭외할 것인가</h3><div class="pd-grid three"><div class="pd-box"><h4>최근 컴백 화력</h4>'+pdList(TRPD.comeback,'comeback')+'</div><div class="pd-box"><h4>역주행·재가속 후보</h4>'+pdList(TRPD.resurgence,'resurgence')+'</div><div class="pd-box"><h4>선제 섭외 종합</h4>'+pdList(TRPD.cast,'cast')+'</div></div>';
+  h+='<h3 class="sec">2. 무엇을 시킬 것인가</h3><div class="pd-grid three"><div class="pd-box"><h4>커버 수요 곡</h4>'+pdList(TRPD.songs,'song')+'</div><div class="pd-box"><h4>먹히는 장르</h4>'+pdList(TRPD.genres,'genre')+'</div><div class="pd-box"><h4>먹히는 콘텐츠·게임</h4>'+pdList([...(TRPD.games||[]),...(TRPD.formats||[])].slice(0,10),'format')+'</div></div>';
+  h+='<h3 class="sec">3. 결국 무엇을 제작할 것인가</h3><div class="pd-recs">';
+  for(const r of TRPD.recs)h+=`<div class="pd-rec"><span class="pd-chip hot">${esc(r.show)}</span><span class="pd-chip">제작확신 ${r.score}</span><h4>${esc(r.title)}</h4><div>${esc(r.why)}</div><div class="risk">검증: ${esc(r.risk)}</div></div>`;
+  h+='</div>';return h;
+}
+
 async function runTrend(){
   const btn=$('trBtn');btn.disabled=true;clearLog('trLog');
   try{
@@ -448,11 +647,30 @@ async function runTrend(){
         const likesAvailable=st.likeCount!=null,commentsAvailable=st.commentCount!=null;
         const views=+st.viewCount||0,likes=likesAvailable?(+st.likeCount||0):0,comments=commentsAvailable?(+st.commentCount||0):0;
         videos.push({id:it.id,title:it.snippet.title,channelId:it.snippet.channelId,channelTitle:it.snippet.channelTitle,
-          published:it.snippet.publishedAt,description:it.snippet.description||'',dur,views,likes,comments,likesAvailable,commentsAvailable,hours,
+          published:it.snippet.publishedAt,description:it.snippet.description||'',tags:it.snippet.tags||[],dur,views,likes,comments,likesAvailable,commentsAvailable,hours,origin:'recent',
           vph:views/hours,vpd:views/(hours/24),lph:likes/hours,cph:comments/hours,
           likeRate:likesAvailable?pct(likes,views):null,commentRate:commentsAvailable?pct(comments,views):null,
           engage:(likesAvailable||commentsAvailable)?pct(likes+comments,views):null,
           sourceCount:sources.get(it.id)?.size||1});
+      }
+    }
+    if($('trBackCatalog')?.value==='on'){
+      const seeds=[...new Set(videos.map(extractSongCandidate).filter(x=>x&&x.length>=2))].slice(0,5);
+      const extraIds=new Set();
+      for(const song of seeds){
+        const d=await yt('search',{part:'snippet',type:'video',q:`"${song}" KPOP`,order:'viewCount',maxResults:5,regionCode:'KR',safeSearch:'moderate'});searchCalls++;
+        for(const it of(d.items||[])){const id=it.id?.videoId;if(!id||ids.has(id))continue;ids.add(id);extraIds.add(id);if(!sources.has(id))sources.set(id,new Set());sources.get(id).add(`catalog/${song}/viewCount`);}
+      }
+      const extra=[...extraIds];
+      if(extra.length)log('trLog',`역주행 원곡 후보 ${extra.length}개 상세 조회 중...`);
+      for(let i=0;i<extra.length;i+=50){
+        const d=await yt('videos',{part:'snippet,statistics,contentDetails',id:extra.slice(i,i+50).join(',')});
+        for(const it of(d.items||[])){
+          const st=it.statistics||{},dur=parseISODur(it.contentDetails?.duration),hours=hoursSince(it.snippet.publishedAt);
+          const likesAvailable=st.likeCount!=null,commentsAvailable=st.commentCount!=null;
+          const views=+st.viewCount||0,likes=likesAvailable?(+st.likeCount||0):0,comments=commentsAvailable?(+st.commentCount||0):0;
+          videos.push({id:it.id,title:it.snippet.title,channelId:it.snippet.channelId,channelTitle:it.snippet.channelTitle,published:it.snippet.publishedAt,description:it.snippet.description||'',tags:it.snippet.tags||[],dur,views,likes,comments,likesAvailable,commentsAvailable,hours,vph:views/hours,vpd:views/(hours/24),lph:likes/hours,cph:comments/hours,likeRate:likesAvailable?pct(likes,views):null,commentRate:commentsAvailable?pct(comments,views):null,engage:(likesAvailable||commentsAvailable)?pct(likes+comments,views):null,sourceCount:sources.get(it.id)?.size||1,origin:'catalog'});
+        }
       }
     }
     const chIds=[...new Set(videos.map(v=>v.channelId))],chMap=new Map();
@@ -470,12 +688,14 @@ async function runTrend(){
     });
     if(!TRV.length)throw new Error('제외 키워드 적용 후 남은 영상이 없습니다.');
     applyAndSaveTrendSnapshots(TRV);
+    TRV=TRV.map(derivePDFeatures);
     buildTrendAggregates();
-    TRMETA={days,regions,queries,orders,searchCalls,after,format,category,rateFloor:rateFloor(),generated:new Date().toISOString()};
+    buildPDEngine();
+    TRMETA={days,regions,queries,orders,searchCalls,after,format,category,decisionMode:$('trDecisionMode')?.value||'full',socialSignals:SOCIAL_SIGNALS.length,rateFloor:rateFloor(),generated:new Date().toISOString()};
     renderTrendReport('speed');
     $('trReport').style.display='block';$('trExport').style.display='block';
     $('trReport').scrollIntoView({behavior:'smooth'});
-    log('trLog',`완료 · 영상 ${TRV.length}개 / 채널 ${TRC.length}개 / 아티스트 후보 ${TRA.length}개`);
+    log('trLog',`완료 · 영상 ${TRV.length}개 / 섭외 후보 ${TRCAST.length}명 / 곡 ${TRSONGS.length}개 / 제작안 ${TRRECS.length}개`);
   }catch(e){log('trLog','오류: '+e.message);}
   btn.disabled=false;
 }
@@ -570,7 +790,8 @@ function renderTrendReport(metric='speed'){
   const eligible=TRV.filter(rateEligible),rateNote='최소 조회수 '+fmt(rateFloor())+'회 이상 우선';
   let h='<div class="rephead"><h2>K-POP 트렌드 레이더</h2><div class="sub">최근 '+TRMETA.days+'일 · 시장 '+TRMETA.regions.join('/')+' · 검색 호출 '+TRMETA.searchCalls+'회 · 후보 영상 '+TRV.length+'개 · '+rateNote+' · 생성 '+new Date(TRMETA.generated).toLocaleString('ko-KR')+'</div></div>';
   h+='<div class="kpi"><div><b>'+fmt(TRV.length)+'</b><span>분석 영상</span></div><div><b>'+fmt(total)+'</b><span>후보 합산 조회수</span></div><div><b>'+fmt(totalLikes)+'</b><span>합산 좋아요</span></div><div><b>'+fmt(totalComments)+'</b><span>합산 댓글</span></div><div><b>'+medLikeRate.toFixed(2)+'%</b><span>좋아요율 중앙값</span></div><div><b>'+medCommentRate.toFixed(3)+'%</b><span>댓글률 중앙값</span></div><div><b>'+medEngage.toFixed(2)+'%</b><span>총반응률 중앙값</span></div><div><b>'+fmt(Math.round(medVph))+'</b><span>시간당 조회 중앙값</span></div><div><b>'+fmt(snapN)+' / '+fmt(likeSnapN)+'</b><span>조회 / 좋아요 실측 비교</span></div></div>';
-  h+='<h3 class="sec">PD용 트렌드 해석</h3>';
+  h+=renderPDDecisionSections();
+  h+='<h3 class="sec">근거 데이터 해석</h3>';
   const speed1=[...TRV].sort((a,b)=>b.vph-a.vph)[0],break1=[...TRV].filter(v=>v.subs>0).sort((a,b)=>b.subBreak-a.subBreak)[0];
   const like1=sortRate('likeRate').find(rateEligible),comment1=sortRate('commentRate').find(rateEligible),engage1=sortRate('engage').find(rateEligible);
   if(speed1)h+='<div class="insight">조회 확산 속도 1위는 <b>「'+esc(speed1.title.slice(0,70))+'」</b> — 시간당 약 '+fmt(Math.round(speed1.vph))+'회. 대중 도달력이 빠른 소재·채널·포맷인지 우선 확인하세요.</div>';
@@ -618,6 +839,10 @@ function trendCSV(kind){
     const rows=[['영상ID','제목','아티스트후보','추정근거','채널','채널유형','업로드','길이초','조회수','업로드후시간당조회','직전실행조회증가','직전실행시간당조회','좋아요','좋아요율%','업로드후시간당좋아요','직전실행좋아요증가','직전실행시간당좋아요','댓글','댓글률%','업로드후시간당댓글','직전실행댓글증가','직전실행시간당댓글','총반응률%','구독자','조회수/구독자%','좋아요/구독자%','반응/구독자%','검색포착수']];
     [...TRV].sort((a,b)=>b.vph-a.vph).forEach(v=>rows.push([v.id,v.title,v.artist,v.artistConfidence,v.channelTitle,v.channelType,v.published,v.dur,v.views,Math.round(v.vph),v.deltaViews??'',v.measuredVph==null?'':Math.round(v.measuredVph),v.likes,Number.isFinite(v.likeRate)?v.likeRate.toFixed(3):'',Math.round(v.lph),v.deltaLikes??'',v.measuredLph==null?'':v.measuredLph.toFixed(2),v.comments,Number.isFinite(v.commentRate)?v.commentRate.toFixed(4):'',v.cph.toFixed(2),v.deltaComments??'',v.measuredCph==null?'':v.measuredCph.toFixed(2),Number.isFinite(v.engage)?v.engage.toFixed(3):'',v.subs,v.subBreak.toFixed(2),v.likeBreak.toFixed(3),v.responseBreak.toFixed(3),v.sourceCount]));
     dlCSV(rows,'kpop_trend_videos_'+new Date().toISOString().slice(0,10)+'.csv');
+  }else if(kind==='decisions'){
+    const rows=[['프로그램','제작확신점수','섭외후보','아이템','제작제안','근거','검증사항']];
+    TRRECS.forEach(r=>rows.push([r.show,r.score,r.cast,r.item,r.title,r.why,r.risk]));
+    dlCSV(rows,'kpop_pd_decisions_'+new Date().toISOString().slice(0,10)+'.csv');
   }else if(kind==='channels'){
     const rows=[['채널ID','채널','유형','구독자','후보영상수','합산조회수','합산좋아요','합산댓글','좋아요율%','댓글률%','총반응률%','반응/구독자%','시간당조회중앙값','최고시간당조회','체급돌파중앙값%','최고영상']];
     TRC.forEach(c=>rows.push([c.id,c.name,c.type,c.subs,c.count,c.views,c.likes,c.comments,c.likeRate.toFixed(3),c.commentRate.toFixed(4),c.engage.toFixed(3),c.responseBreak.toFixed(3),Math.round(c.medianVph),Math.round(c.maxVph),c.medianBreak.toFixed(2),c.best?.title||'']));
@@ -629,13 +854,14 @@ function trendCSV(kind){
   }
 }
 function trendCopy(){
-  const pack={periodDays:TRMETA?.days,markets:TRMETA?.regions,queries:TRMETA?.queries,rateFloor:TRMETA?.rateFloor,
-    topByViewSpeed:trendSorted('speed').slice(0,20).map(v=>({title:v.title,artistCandidate:v.artist,channel:v.channelTitle,views:v.views,viewsPerHour:Math.round(v.vph),likes:v.likes,likeRatePct:+(v.likeRate||0).toFixed(3),comments:v.comments,commentRatePct:+(v.commentRate||0).toFixed(4),engagementPct:+(v.engage||0).toFixed(3),measuredViewDelta:v.deltaViews,measuredLikeDelta:v.deltaLikes,measuredLikesPerHour:v.measuredLph==null?null:+v.measuredLph.toFixed(2),viewToSubscriberPct:+v.subBreak.toFixed(2),responseToSubscriberPct:+v.responseBreak.toFixed(3),published:v.published})),
-    topByLikeRate:trendSorted('likerate').slice(0,15).map(v=>({title:v.title,artistCandidate:v.artist,channel:v.channelTitle,views:v.views,likes:v.likes,likeRatePct:+(v.likeRate||0).toFixed(3),comments:v.comments,commentRatePct:+(v.commentRate||0).toFixed(4),engagementPct:+(v.engage||0).toFixed(3)})),
-    topChannels:TRC.slice(0,20).map(c=>({channel:c.name,type:c.type,subscribers:c.subs,candidateVideos:c.count,totalViews:c.views,totalLikes:c.likes,totalComments:c.comments,likeRatePct:+c.likeRate.toFixed(3),commentRatePct:+c.commentRate.toFixed(4),engagementPct:+c.engage.toFixed(3),responseToSubscriberPct:+c.responseBreak.toFixed(3),medianViewsPerHour:Math.round(c.medianVph)})),
-    topArtistCandidates:TRA.slice(0,20).map(a=>({artist:a.name,confidence:a.confidence,videos:a.count,channels:a.channelCount,totalViews:a.views,totalLikes:a.likes,totalComments:a.comments,likeRatePct:+a.likeRate.toFixed(3),commentRatePct:+a.commentRate.toFixed(4),engagementPct:+a.engage.toFixed(3),medianViewsPerHour:Math.round(a.medianVph)}))};
-  navigator.clipboard.writeText('다음 최근 K-POP 유튜브 표본을 조회수와 팬덤 반응 지표를 함께 사용해 PD 관점에서 분석해줘. 단순 조회수 상위가 아니라 ①대중 도달형 ②좋아요율이 높은 팬덤 결집형 ③댓글률이 높은 참여·화제형 ④구독자 체급을 넘어선 돌파형 ⑤조회·좋아요 증가 속도가 동시에 빠른 진짜 급상승형으로 나누고, 즉시 섭외 후보·콘텐츠 벤치마크·추가 조사 대상을 제안해줘:\n'+JSON.stringify(pack,null,1)).then(()=>{$('trCopyMsg').textContent='복사됨';});
+  const pack={periodDays:TRMETA?.days,markets:TRMETA?.regions,decisionMode:TRMETA?.decisionMode,socialSignals:TRMETA?.socialSignals,
+    casting:{overall:TRCAST.slice(0,10).map(x=>({artist:x.name,castScore:x.castScore,comebackScore:x.comebackScore,resurgenceScore:x.resurgenceScore,vocalScore:x.vocalScore,varietyScore:x.varietyScore,videos:x.count,channels:x.channelCount,engagementPct:+x.engage.toFixed(3)})),comeback:TRPD?.comeback||[],resurgence:TRPD?.resurgence||[]},
+    whatWorks:{songs:TRSONGS.slice(0,15).map(x=>({song:x.name,score:x.score,videos:x.count,channels:x.channelCount,artists:x.artistCount,covers:x.covers,challenges:x.challenges,resurgence:x.resurgence,engagementPct:+x.engage.toFixed(3)})),genres:TRGENRES.slice(0,10),formats:TRFORMATS.slice(0,10),games:TRGAMES.slice(0,10)},
+    productionRecommendations:TRRECS,
+    evidenceVideos:trendSorted('speed').slice(0,25).map(v=>({title:v.title,artist:v.artist,channel:v.channelTitle,views:v.views,viewsPerHour:Math.round(v.vph),measuredViewsPerHour:v.measuredVph==null?null:Math.round(v.measuredVph),likes:v.likes,likeRatePct:+(v.likeRate||0).toFixed(3),comments:v.comments,engagementPct:+(v.engage||0).toFixed(3),contentTypes:v.contentTypes,genres:v.genres,games:v.games,songCandidate:v.songCandidate,isComeback:v.isComeback,isResurgence:v.isResurgence}))};
+  navigator.clipboard.writeText('다음 K-POP PD 의사결정 데이터를 검토해줘. 1) 지금 섭외해야 할 아이돌과 이유 2) 커버시킬 곡·장르·게임·콘텐츠 3) 〈여보세요?〉와 〈전화기 옆 사서함〉의 구체 제작안 4) 자동 추정 오류와 추가 확인이 필요한 리스크를 분리해서 냉정하게 평가해줘:\n'+JSON.stringify(pack,null,1)).then(()=>{$('trCopyMsg').textContent='PD 분석 데이터 복사됨';});
 }
+
 /* ---------- 공용: 언어/감성/토큰 ---------- */
 const STOP=new Set(['그리고','그런데','하지만','정말','진짜','너무','근데','저는','제가','이건','그냥','이렇게','같아요','합니다','해요','있는','있어요','없는','했어요','하는','에서','으로','부터','까지','저도','우리','오늘','영상','댓글','채널','유튜브','제발','그리구','이제','다시','계속','보고','하고','와서','근데요','the','and','for','you','are','this','that','was','with','have','has','not','but','all','can','your','its','from','they','their','will','out','when','what','who','how','why','just','like','was','were','been','him','her','his','she','get','got','one','video','youtube','comment']);
 function detectLang(s){
